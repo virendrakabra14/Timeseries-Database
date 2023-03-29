@@ -1,3 +1,4 @@
+
 #include <stdlib.h>
 #include <string>
 #include <stdio.h>
@@ -6,44 +7,45 @@
 #include "errno.h"
 #include <vector>
 #include <pthread.h>
-#include "tmpfs.h"
+#include <cstring>
 
+#include "tmpfs.h"
 // Creates and initialises the tmpfs. RAM based fast filesystem to store data before writing to disk.
 // All tmpfs init errors are fatal, terminate database on error.
 int tmpfs_init()
 {
-    // Check if mountpoint exists
-    struct stat sb;
-    int err_ret = 0;
-    if (stat(TMPFS_MOUNTPOINT.c_str(), &sb) == 0)
-    {
-        printf("WARN : Mountpoint already exists, the database may overwrite the contents.....\n");
-    }
-    else
-    {
-        printf("INFO : Creating mount directory......");
-        string cmd = "mkdir " + TMPFS_MOUNTPOINT;
-        err_ret = system(cmd.c_str());
-        if (!err_ret)
-            printf("Success\n");
-        else
-        {
-            printf("Failed.....Aborting\n");
-            return 1;
-        }
-    }
+    // // Check if mountpoint exists
+    // struct stat sb;
+    // int err_ret = 0;
+    // if (stat(TMPFS_MOUNTPOINT.c_str(), &sb) == 0)
+    // {
+    //     printf("WARN : Mountpoint already exists, the database may overwrite the contents.....\n");
+    // }
+    // else
+    // {
+    //     printf("INFO : Creating mount directory......");
+    //     string cmd = "mkdir " + TMPFS_MOUNTPOINT;
+    //     err_ret = system(cmd.c_str());
+    //     if (!err_ret)
+    //         printf("Success\n");
+    //     else
+    //     {
+    //         printf("Failed.....Aborting\n");
+    //         return 1;
+    //     }
+    // }
 
-    // Create and mount tmpfs, user will be prompted for sudo
-    string cmd = "sudo mount -t tmpfs -o size=" + TMPFS_SIZE + " tmpfs " + TMPFS_MOUNTPOINT;
-    printf("INFO : Creating amd mounting tmpfs......");
-    err_ret = system(cmd.c_str());
-    if (!err_ret)
-        printf("Success\n");
-    else
-    {
-        printf("Failed.....Aborting\n");
-        return 1;
-    }
+    // // Create and mount tmpfs, user will be prompted for sudo
+    // string cmd = "sudo mount -t tmpfs -o size=" + TMPFS_SIZE + " tmpfs " + TMPFS_MOUNTPOINT;
+    // printf("INFO : Creating amd mounting tmpfs......");
+    // err_ret = system(cmd.c_str());
+    // if (!err_ret)
+    //     printf("Success\n");
+    // else
+    // {
+    //     printf("Failed.....Aborting\n");
+    //     return 1;
+    // }
     db_memory = (memory_engine *)malloc(sizeof(memory_engine));
     return 0;
 }
@@ -100,13 +102,13 @@ int tmpfs_create_db(string db_name)
     }
     db->name = db_name;
     db_memory->databases.push_back(db);
-    mkdir((TMPFS_MOUNTPOINT + "/" + db_name).c_str(), 0777);
+    // mkdir((TMPFS_MOUNTPOINT + "/" + db_name).c_str(), 0777);
     pthread_mutex_unlock(&(db_memory->db_mem_lock));
     return 0;
 }
 
 // Creates a new table in the database and creates its directories
-int tmpfs_create_table(string db_name, string table_name)
+int tmpfs_create_table(string db_name, string table_name, vector<string> field_names, vector<int> field_sizes)
 {
     for (int i = 0; i < db_memory->databases.size(); i++)
     {
@@ -129,16 +131,25 @@ int tmpfs_create_table(string db_name, string table_name)
             string table_dir = TMPFS_MOUNTPOINT + "/" + db_name + "/" + table_name + "/";
             t->name = table_name;
             t->parent = db_memory->databases[i];
-
-            t->tmp_base_file_path = table_dir;
-            t->active_size = 0;
-            t->curr_file_time = 0;
-
-            t->active_file = NULL;
+            for (int i = 0; i < field_names.size(); i++)
+            {
+                t->field_name.push_back(field_names[i]);
+                t->field_size.push_back(field_sizes[i]);
+                t->array_index.push_back(0);
+                char *arr = (char *)malloc(FIELD_BUFFER_SIZE * field_sizes[i]);
+                if (arr)
+                {
+                    t->field_array.push_back(arr);
+                }
+                else 
+                {
+                    printf("ERROR : Malloc failed, cannot create table..\n");
+                }
+            }
 
             db_memory->databases[i]->tables.push_back(t);
             // Create table directory
-            mkdir((TMPFS_MOUNTPOINT + "/" + db_name + "/" + table_name).c_str(), 0777);
+            // mkdir((TMPFS_MOUNTPOINT + "/" + db_name + "/" + table_name).c_str(), 0777);
             pthread_mutex_unlock(&db_memory->databases[i]->database_lock);
             return 0;
         }
@@ -153,7 +164,7 @@ int tmpfs_create_table(string db_name, string table_name)
  * to be changed to handle late packets.
  * Creates the data file if it was not created or got flushed to the disk
  */
-int tmpfs_insertEntry(string db_name, string table_name, string entry, time_t timestamp)
+int tmpfs_insertEntry(string db_name, string table_name, string timestamp, vector<char *> entries)
 {
     for (int i = 0; i < db_memory->databases.size(); i++)
     {
@@ -161,26 +172,26 @@ int tmpfs_insertEntry(string db_name, string table_name, string entry, time_t ti
         {
             for (int j = 0; j < db_memory->databases[i]->tables.size(); j++)
             {
+
                 pthread_mutex_lock(&db_memory->databases[i]->tables[j]->table_lock);
                 if (db_memory->databases[i]->tables[j]->name == table_name) // table exists
                 {
-                    if (db_memory->databases[i]->tables[j]->active_file == NULL) // If file flushed out
+
+                    db_memory->databases[i]->tables[j]->timestamp.push_back(timestamp); // Insert timestamp
+                    for (int k = 0; k < entries.size(); k++)                            // Insert entries
                     {
-                        db_memory->databases[i]->tables[j]->tmp_file_paths.push_back(ctime(&timestamp));
-                        db_memory->databases[i]->tables[j]->curr_file_time = timestamp;
-                        db_memory->databases[i]->tables[j]->active_file = fopen((db_memory->databases[i]->tables[j]->tmp_base_file_path + (ctime(&timestamp))).c_str(), "wb");
-                        if (db_memory->databases[i]->tables[j]->active_file == NULL)
-                        {
-                            printf("ERROR : Failed to create/open file......\n");
-                            pthread_mutex_unlock(&db_memory->databases[i]->tables[j]->table_lock);
-                            return 1;
-                        }
+                        
+                        db_memory->databases[i]->tables[j]->field_array[k][db_memory->databases[i]->tables[j]->array_index[k]];
+                        
+
+                        memcpy(&db_memory->databases[i]->tables[j]->field_array[k][db_memory->databases[i]->tables[j]->array_index[k]],
+                               entries[k], db_memory->databases[i]->tables[j]->field_size[k]);
+
+                        db_memory->databases[i]->tables[j]->array_index[k] += db_memory->databases[i]->tables[j]->field_size[k];
                     }
-                    db_memory->databases[i]->tables[j]->active_size += entry.length();
-                    fwrite(entry.c_str(), 1, entry.length(), db_memory->databases[i]->tables[j]->active_file);
-                    if (db_memory->databases[i]->tables[j]->active_size >= BLOCK_SIZE)
+                    if (db_memory->databases[i]->tables[j]->timestamp.size() >= BUFFER_SIZE_TRIGGER)
                     {
-                        // Close file and flush to disk if necessary
+                        // Initiate compression and disk write....
                     }
                     pthread_mutex_unlock(&db_memory->databases[i]->tables[j]->table_lock);
                     return 0;
@@ -199,14 +210,21 @@ int main()
 {
     tmpfs_init();
     tmpfs_create_db("test_db");
+    vector<string> names;
+    names.push_back("pk123");
+    names.push_back("kush234");
+    vector<int> siz;
+    siz.push_back(3);
+    siz.push_back(4);
 
-    tmpfs_create_table("test_db", "tab1");
-
-    time_t t;
-    tmpfs_insertEntry("test_db", "tab1", "pranjal kushwaha", t);
-    tmpfs_insertEntry("test_db", "tab1", "pranjal ", t);
-    tmpfs_insertEntry("test_db", "tab1", " kushwaha", t);
-    tmpfs_insertEntry("test_db", "tab1", "pranjhwaha", t);
+    tmpfs_create_table("test_db", "tab1", names, siz);
+    char e1[] = {2, 4, 8};
+    char e2[] = {9, 6, 7, 5};
+    vector<char *> ent;
+    ent.push_back(e1);
+    ent.push_back(e2);
+    string time = "egfh";
+    tmpfs_insertEntry("test_db", "tab1", time, ent);
 
     // tmpfs_deinit();
 }
