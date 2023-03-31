@@ -1,12 +1,10 @@
 #define BLOCK_SIZE 4096
-#define TMPFS_BUFFER_SIZE 10 // Number of files in tmpfs after which we start flusing to disk
-#define FIELD_BUFFER_SIZE 100
-#define BUFFER_SIZE_TRIGGER 90
+#define FIELD_BUFFER_SIZE 100000
+
+#define INT_SIZE sizeof(int)
+#define FLOAT_SIZE sizeof(float)
 
 using namespace std;
-
-string TMPFS_MOUNTPOINT = "./tmp_mountpoint";
-string TMPFS_SIZE = "10m";
 
 struct database;
 struct table
@@ -14,19 +12,31 @@ struct table
     string name;
     struct database *parent;
 
-    vector<string> field_name;
-    vector<int> field_size;
+    int table_insert_head;
+    vector<vector<int>> field_present;
 
-    vector<char *> field_array;
+    vector<string> char_field_name;
+    vector<int> char_field_size;
+    vector<char *> char_field_array;
+
+    vector<string> int_field_name;
+    vector<int*> int_field_array;
+
+    vector<string> float_field_name;
+    vector<float*> float_field_array;
+
+    // types :
+    // INT float char*(fixed)
+
+    // two types of time;
+    // optional millisecond column
+    // remove timestamp
     vector<string> timestamp;
-    vector<int> array_index;
-    
-
-    pthread_mutex_t table_lock;
 
     string disk_base_path;
     vector<string> disk_file_paths;
 };
+
 struct database
 {
     string name;
@@ -41,8 +51,8 @@ struct memory_engine
 
 struct memory_engine *db_memory;
 
-int tmpfs_init();
-int tmpfs_deinit();
-int tmpfs_create_db(string db_name);
-int tmpfs_create_table(string db_name, string table_name,vector<string> field_names, vector<int> field_sizes);
-int tmpfs_insertEntry(string db_name, string table_name, string timestamp, vector<char *> entries);
+int fs_init();
+int fs_deinit();
+int fs_create_db(string db_name);
+int fs_create_table(string db_name, string table_name, vector<string> field_names, vector<int> field_type, vector<int> field_size);
+int fs_insertEntry(string db_name, string table_name, string timestamp, vector<char *> char_entries, vector<int> int_entries, vector<float> float_entries, vector<int> present);
