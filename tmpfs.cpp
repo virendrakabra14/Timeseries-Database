@@ -8,10 +8,17 @@
 #include <vector>
 #include <pthread.h>
 #include <cstring>
+#include <unistd.h>
+#include "ctime"
+#include "sstream"
+#include "chrono"
 
-#include "tmpfs.h"
+#include "disk.cpp"
+
+#include "tmpfs.hpp"
 // Creates and initialises the tmpfs. RAM based fast filesystem to store data before writing to disk.
 // All tmpfs init errors are fatal, terminate database on error.
+void print_table(string db_name, string table_name);
 int fs_init()
 {
     // // Check if mountpoint exists
@@ -46,7 +53,8 @@ int fs_init()
     //     printf("Failed.....Aborting\n");
     //     return 1;
     // }
-    db_memory = (memory_engine *)malloc(sizeof(memory_engine));
+    db_memory = new memory_engine;
+    mkdir(BASE_DIR, 0777);
     return 0;
 }
 
@@ -93,7 +101,7 @@ int fs_create_db(string db_name)
         }
     }
 
-    database *db = (database *)malloc(sizeof(database));
+    database *db = new database;
     if (db == NULL)
     {
         printf("ERROR : Malloc failed......\n");
@@ -102,7 +110,7 @@ int fs_create_db(string db_name)
     }
     db->name = db_name;
     db_memory->databases.push_back(db);
-    // mkdir((TMPFS_MOUNTPOINT + "/" + db_name).c_str(), 0777);
+    mkdir((BASE_DIR + db_name + "/").c_str(), 0777);
     pthread_mutex_unlock(&(db_memory->db_mem_lock));
     return 0;
 }
@@ -140,11 +148,14 @@ int fs_create_table(string db_name, string table_name, vector<string> field_name
             }
 
             // Checks passed, create new table
-            table *t = (table *)malloc(sizeof(table));
+            table *t = new table;
 
             t->name = table_name;
             t->parent = db_memory->databases[i];
             t->table_insert_head = 0;
+            t->table_insert_head_secondary = 0;
+            t->min_time = 0;
+            t->min_time_secondary = 0;
 
             int failure = 0;
             for (int j = 0; j < field_names.size(); j++)
@@ -194,8 +205,7 @@ int fs_create_table(string db_name, string table_name, vector<string> field_name
             }
 
             db_memory->databases[i]->tables.push_back(t);
-            // Create table directory
-            // mkdir((TMPFS_MOUNTPOINT + "/" + db_name + "/" + table_name).c_str(), 0777);
+            mkdir((BASE_DIR + db_name + "/" + table_name + "/").c_str(), 0777);
             pthread_mutex_unlock(&db_memory->databases[i]->database_lock);
             return 0;
         }
@@ -205,7 +215,7 @@ int fs_create_table(string db_name, string table_name, vector<string> field_name
     return 1;
 }
 
-int fs_insertEntry(string db_name, string table_name, string timestamp, vector<char *> char_entries, vector<int> int_entries, vector<float> float_entries, vector<int> present)
+int fs_insertEntry(string db_name, string table_name, long int timestamp, vector<char *> char_entries, vector<int> int_entries, vector<float> float_entries, vector<int> present)
 {
     for (int i = 0; i < db_memory->databases.size(); i++)
     {
@@ -217,7 +227,7 @@ int fs_insertEntry(string db_name, string table_name, string timestamp, vector<c
             {
                 if (db_memory->databases[i]->tables[j]->name == table_name) // table exists
                 {
-                    
+
                     db_memory->databases[i]->tables[j]->timestamp.push_back(timestamp); // Insert timestamp
                     vector<int> pres(present.begin(), present.end());
                     db_memory->databases[i]->tables[j]->field_present.push_back(pres);
@@ -233,16 +243,17 @@ int fs_insertEntry(string db_name, string table_name, string timestamp, vector<c
                     }
                     for (int k = 0; k < float_entries.size(); k++)
                     {
-                         
+
                         db_memory->databases[i]->tables[j]->float_field_array[k]
                                                                              [db_memory->databases[i]->tables[j]->table_insert_head] = float_entries[k];
-
                     }
                     db_memory->databases[i]->tables[j]->table_insert_head += 1;
                     if (db_memory->databases[i]->tables[j]->table_insert_head >= FIELD_BUFFER_SIZE)
                     {
                         // Initiate compression and disk write....
-                        printf("buffer overflow \n");
+                        fs_buffer_swap(db_memory->databases[i]->tables[j]);
+                        db_memory->databases[i]->tables[j]->table_insert_head = 0;
+                        // printf("buffer overflow \n");
                     }
 
                     pthread_mutex_unlock(&db_memory->databases[i]->database_lock);
@@ -258,13 +269,93 @@ int fs_insertEntry(string db_name, string table_name, string timestamp, vector<c
     return 1;
 }
 
+template <typename T>
+int swap_buffers(vector<T> *vec1, vector<T> *vec2)
+{
+    for (int i = 0; i < (*vec1).size(); i++)
+    {
+        T tmp = (*vec1)[i];
+        (*vec1)[i] = (*vec2)[i];
+        (*vec2)[i] = tmp;
+    }
+    return 0;
+}
+
+int fs_buffer_swap(table *t)
+{
+    int exists = 1;
+    if (t->char_field_secondary_array.size() == 0 && t->int_field_secondary_array.size() == 0 && t->float_field_secondary_array.size() == 0)
+    {
+        exists = 0;
+        int failure = 0;
+        for (int i = 0; i < t->char_field_name.size(); i++)
+        {
+            char *arr = (char *)malloc(FIELD_BUFFER_SIZE * t->char_field_size[i]);
+            if (arr == NULL)
+            {
+                failure = 1;
+                break;
+            }
+            t->char_field_secondary_array.push_back(arr);
+        }
+        for (int i = 0; i < t->int_field_name.size(); i++)
+        {
+            int *arr = (int *)malloc(FIELD_BUFFER_SIZE * INT_SIZE);
+            if (arr == NULL)
+            {
+                failure = 1;
+                break;
+            }
+            t->int_field_secondary_array.push_back(arr);
+        }
+        for (int i = 0; i < t->float_field_name.size(); i++)
+        {
+            float *arr = (float *)malloc(FIELD_BUFFER_SIZE * FLOAT_SIZE);
+            if (arr == NULL)
+            {
+                failure = 1;
+                break;
+            }
+            t->float_field_secondary_array.push_back(arr);
+        }
+        // if (failure)
+        //     printf("Failed!!!!\n");
+        // else
+        //     printf("successss\n");
+    }
+    // if (fff == 1)
+    // {
+    //     fflush(stdout);
+    //     print_table("test_db", "tab1");
+    //     fflush(stdout);
+    //     fff = 1;
+    // }
+    // fff++;
+    swap_buffers(&t->char_field_array, &t->char_field_secondary_array);
+    swap_buffers(&t->int_field_array, &t->int_field_secondary_array);
+    swap_buffers(&t->float_field_array, &t->float_field_secondary_array);
+    t->field_secondary_present.swap(t->field_present);
+    t->field_present.clear();
+    t->table_insert_head_secondary = t->table_insert_head;
+    t->timestamp.swap(t->timestamp_secondary);
+    t->timestamp.clear();
+    t->min_time_secondary = t->min_time;
+
+    if (exists)
+    {
+        file_write(t);
+    }
+    fflush(stdout);
+    return 0;
+}
+
 void print_table(string db_name, string table_name) // for debug
 {
     for (int i = 0; i < db_memory->databases.size(); i++)
     {
         if (db_memory->databases[i]->name == db_name) // db exists
         {
-            pthread_mutex_lock(&db_memory->databases[i]->database_lock);
+            //pthread_mutex_lock(&db_memory->databases[i]->database_lock);
             for (int j = 0; j < db_memory->databases[i]->tables.size(); j++)
             {
                 if (db_memory->databases[i]->tables[j]->name == table_name) // table exists
@@ -362,14 +453,18 @@ int main()
     type.push_back(2);
     fs_create_table("test_db", "tab1", names, type, size);
 
-    string time = "egfh";
     for (int i = 0; i < 100000; i++)
     {
+        chrono::milliseconds ms = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch());
+        long time = ms.count();
         vector<int> present;
+        // printf("present : ");
         for (int j = 0; j < 9; j++)
         {
-            present.push_back(1); // rand() % 2);
+            present.push_back(rand() % 2);
+            //  printf("%d",present[j]);
         }
+        // printf("\n");
         char c1[5], c2[8], c3[10], c4[15];
         for (int j = 0; j < 5; j++)
         {
@@ -401,9 +496,12 @@ int main()
         fvec.push_back((float)rand() / 393);
         fvec.push_back((float)rand() / 393);
         fvec.push_back((float)rand() / 393);
-
+        if (i % 10000 == 0)
+        {
+            // sleep(1);
+        }
         fs_insertEntry("test_db", "tab1", time, cvec, ivec, fvec, present);
     }
-    print_table("test_db", "tab1");
+    //print_table("test_db", "tab1");
     // tmpfs_deinit();
 }

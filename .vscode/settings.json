@@ -7,6 +7,10 @@
         "functional": "cpp",
         "typeinfo": "cpp",
         "deque": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "tmpfs.h": "c",
+        "iosfwd": "c",
+        "chrono": "cpp",
+        "*.tcc": "cpp"
     }
 }
