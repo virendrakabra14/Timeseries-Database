@@ -7,7 +7,7 @@
 #include "tmpfs.hpp"
 #include <algorithm>
 #include "filesystem"
-
+int file_read(string db_name, string table_name, long int min_time, long int max_time);
 void print_table_ptr(table *t) // for debug
 {
     printf("Name : %s\n", t->name.c_str());
@@ -80,7 +80,6 @@ int file_write(table *t)
     s << "-";
     s << max_time;
     FILE *file = fopen((BASE_DIR + t->parent->name + "/" + t->name + "/" + s.str()).c_str(), "wb+");
-    printf("%s\n", (BASE_DIR + t->parent->name + "/" + t->name + "/" + s.str()).c_str());
     fflush(stdout);
 
     uint16_t num_entries = t->table_insert_head_secondary;
@@ -151,15 +150,32 @@ int file_write(table *t)
         fwrite(t->float_field_secondary_array[i], FLOAT_SIZE, num_entries, file);
     }
     fclose(file);
-
+    long int count = 0, tot = 0;
+    for (long int i = 0; i < t->field_secondary_present.size(); i++)
+    {
+        int flag = 0;
+        tot++;
+        for (long int j = 0; j < t->field_secondary_present[i].size(); j++)
+        {
+            if (t->field_secondary_present[i][j] == 1)
+                flag = 1;
+        }
+        if (flag == 0)
+        {
+            count++;
+        }
+    }
+    // printf("STORE COUNT : %ld\n", count);
+    // printf("STORE TOTAL : %ld\n", tot);
     table *tab = new table;
     tab->name = t->name;
     tab->parent = t->parent;
-    if (flag == 0)
+    // if (flag == 0)
     {
         load_file(tab, min_time, max_time);
         flag = 1;
     }
+    // file_read(t->parent->name, t->name, 0, 0);
     return 0;
 }
 
@@ -187,9 +203,10 @@ int load_file(table *t, long int min_time, long int max_time)
     num_float_cols = metabuf[4];
 
     bitmap_len = metabuf[5] + metabuf[6] * 256;
+
     int tot_cols = (int)num_char_cols + (int)num_int_cols + (int)num_float_cols;
     char *bitmap[tot_cols];
-    for (int i = 0; i < tot_cols; i++)  
+    for (int i = 0; i < tot_cols; i++)
     {
         bitmap[i] = (char *)malloc(bitmap_len);
         fread(bitmap[i], bitmap_len, 1, file);
@@ -197,13 +214,13 @@ int load_file(table *t, long int min_time, long int max_time)
 
     uint8_t head = 0;
     int iter = 0;
-    for (int i = 0; i < num_entries; i++)//Inflate bitmap
+    for (int i = 0; i < num_entries; i++) // Inflate bitmap
     {
         vector<int> v;
         t->field_present.push_back(v);
         for (int j = 0; j < tot_cols; j++)
         {
-            t->field_present[i].push_back(bitmap[j][iter] & (1 << head));
+            t->field_present[i].push_back((bitmap[j][iter] & (1 << head))>>head);
         }
         head++;
         if (head == 8)
@@ -241,13 +258,40 @@ int load_file(table *t, long int min_time, long int max_time)
         fread(col, FLOAT_SIZE, num_entries, file);
         t->float_field_array.push_back(col);
     }
-
-    print_table_ptr(t);
+    long int count = 0, tot = 0;
+    for(long int i  = 0;i<t->field_present.size();i++)
+    {
+        int flag = 0;
+        tot++;
+        for(long int j = 0;j<t->field_present[i].size();j++)
+        {
+            if(t->field_present[i][j] == 1)
+            flag = 1;
+        }
+        if(flag == 0)
+        {
+            count++;
+        }
+    }
+    // printf("LOAD COUNT : %ld\n", count);
+    // printf("LOAD TOTAL : %ld\n", tot);
+    //print_table_ptr(t);
     fclose(file);
     return 0;
 }
 
-int file_read(vector<table *> t, long int min_time, long int max_time)
+int file_read(string db_name, string table_name, long int min_time, long int max_time)
 {
+
+    string path = BASE_DIR + db_name + "/" + table_name + "/";
+    for (const auto &entry : filesystem::directory_iterator(path))
+    {
+        string name(entry.path().c_str());
+        name = name.substr(path.length(), name.length());
+        // printf("%s\n", name.c_str());
+        // printf("%d\n", name.find('-'));
+        // printf("%ld\n", stol(name.substr(0,name.find('-')).c_str()));
+    }
+    printf("\n");
     return 0;
 }

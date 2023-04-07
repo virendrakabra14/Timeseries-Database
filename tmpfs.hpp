@@ -31,7 +31,7 @@ struct table
     vector<string> int_field_name;
     vector<int*> int_field_array;
     vector<int*> int_field_secondary_array;
-    
+
     vector<int*> int_field_ooo;
 
     vector<string> float_field_name;
@@ -39,9 +39,11 @@ struct table
     vector<float*> float_field_secondary_array;
     vector<float*> float_field_ooo;
 
+    int step;
 
     vector<long int> timestamp;
     long int min_time;
+    long int max_time;
 
     vector<long int> timestamp_secondary;
     long int min_time_secondary;
@@ -66,9 +68,12 @@ struct memory_engine
 
 struct memory_engine *db_memory;
 
+
 int fs_init();
 int fs_deinit();
 int fs_create_db(string db_name);
-int fs_create_table(string db_name, string table_name, vector<string> field_names, vector<int> field_type, vector<int> field_size);
+int fs_create_table(string db_name, string table_name, vector<string> field_names, vector<int> field_type, vector<int> field_size, int step);
 int fs_insertEntry(string db_name, string table_name, long int timestamp, vector<char *> char_entries, vector<int> int_entries, vector<float> float_entries, vector<int> present);
 int fs_buffer_swap(table* t);
+
+int write_ooo_buffer(table * t);
