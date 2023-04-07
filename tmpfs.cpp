@@ -170,7 +170,14 @@ int fs_create_table(string db_name, string table_name, vector<string> field_name
                         failure = 1;
                         break;
                     }
+                    char *arr2 = (char *)malloc(OOO_BUFFER_SIZE * field_size[j]);
+                    if (arr == NULL)
+                    {
+                        failure = 1;
+                        break;
+                    }
                     t->char_field_array.push_back(arr);
+                    t->char_field_ooo.push_back(arr2);
                 }
                 else if (field_type[j] == 1) // Int column
                 {
@@ -181,7 +188,14 @@ int fs_create_table(string db_name, string table_name, vector<string> field_name
                         failure = 1;
                         break;
                     }
+                    int *arr2 = (int *)malloc(OOO_BUFFER_SIZE * INT_SIZE);
+                    if (arr == NULL)
+                    {
+                        failure = 1;
+                        break;
+                    }
                     t->int_field_array.push_back(arr);
+                    t->int_field_ooo.push_back(arr2);
                 }
                 else if (field_type[j] == 2)
                 {
@@ -192,7 +206,14 @@ int fs_create_table(string db_name, string table_name, vector<string> field_name
                         failure = 1;
                         break;
                     }
+                    float *arr2 = (float *)malloc(OOO_BUFFER_SIZE * FLOAT_SIZE);
+                    if (arr == NULL)
+                    {
+                        failure = 1;
+                        break;
+                    }
                     t->float_field_array.push_back(arr);
+                    t->float_field_ooo.push_back(arr2);
                 }
             }
             if (failure)
@@ -200,6 +221,10 @@ int fs_create_table(string db_name, string table_name, vector<string> field_name
                 free_pointer_vec<char *>(t->char_field_array);
                 free_pointer_vec<int *>(t->int_field_array);
                 free_pointer_vec<float *>(t->float_field_array);
+
+                free_pointer_vec<char *>(t->char_field_ooo);
+                free_pointer_vec<int *>(t->int_field_ooo);
+                free_pointer_vec<float *>(t->float_field_ooo);
                 printf("ERROR : Memory allocation failed, cannot create table.\n");
                 return 1;
             }
@@ -227,33 +252,43 @@ int fs_insertEntry(string db_name, string table_name, long int timestamp, vector
             {
                 if (db_memory->databases[i]->tables[j]->name == table_name) // table exists
                 {
+                    if(db_memory->databases[i]->tables[j]->table_insert_head == 0)
+                    {
+                        db_memory->databases[i]->tables[j]->min_time = timestamp;
+                    }
+                    if (timestamp >= db_memory->databases[i]->tables[j]->min_time)
+                    {
+                        db_memory->databases[i]->tables[j]->timestamp.push_back(timestamp); // Insert timestamp
+                        vector<int> pres(present.begin(), present.end());
+                        db_memory->databases[i]->tables[j]->field_present.push_back(pres);
+                        for (int k = 0; k < char_entries.size(); k++) // Insert entries
+                        {
+                            memcpy(&db_memory->databases[i]->tables[j]->char_field_array[k][db_memory->databases[i]->tables[j]->table_insert_head * db_memory->databases[i]->tables[j]->char_field_size[k]],
+                                   char_entries[k], db_memory->databases[i]->tables[j]->char_field_size[k]);
+                        }
+                        for (int k = 0; k < int_entries.size(); k++)
+                        {
+                            db_memory->databases[i]->tables[j]->int_field_array[k]
+                                                                               [db_memory->databases[i]->tables[j]->table_insert_head] = int_entries[k];
+                        }
+                        for (int k = 0; k < float_entries.size(); k++)
+                        {
 
-                    db_memory->databases[i]->tables[j]->timestamp.push_back(timestamp); // Insert timestamp
-                    vector<int> pres(present.begin(), present.end());
-                    db_memory->databases[i]->tables[j]->field_present.push_back(pres);
-                    for (int k = 0; k < char_entries.size(); k++) // Insert entries
-                    {
-                        memcpy(&db_memory->databases[i]->tables[j]->char_field_array[k][db_memory->databases[i]->tables[j]->table_insert_head * db_memory->databases[i]->tables[j]->char_field_size[k]],
-                               char_entries[k], db_memory->databases[i]->tables[j]->char_field_size[k]);
+                            db_memory->databases[i]->tables[j]->float_field_array[k]
+                                                                                 [db_memory->databases[i]->tables[j]->table_insert_head] = float_entries[k];
+                        }
+                        db_memory->databases[i]->tables[j]->table_insert_head += 1;
+                        if (db_memory->databases[i]->tables[j]->table_insert_head >= FIELD_BUFFER_SIZE)
+                        {
+                            // Initiate compression and disk write....
+                            fs_buffer_swap(db_memory->databases[i]->tables[j]);
+                            db_memory->databases[i]->tables[j]->table_insert_head = 0;
+                            // printf("buffer overflow \n");
+                        }
                     }
-                    for (int k = 0; k < int_entries.size(); k++)
+                    else
                     {
-                        db_memory->databases[i]->tables[j]->int_field_array[k]
-                                                                           [db_memory->databases[i]->tables[j]->table_insert_head] = int_entries[k];
-                    }
-                    for (int k = 0; k < float_entries.size(); k++)
-                    {
-
-                        db_memory->databases[i]->tables[j]->float_field_array[k]
-                                                                             [db_memory->databases[i]->tables[j]->table_insert_head] = float_entries[k];
-                    }
-                    db_memory->databases[i]->tables[j]->table_insert_head += 1;
-                    if (db_memory->databases[i]->tables[j]->table_insert_head >= FIELD_BUFFER_SIZE)
-                    {
-                        // Initiate compression and disk write....
-                        fs_buffer_swap(db_memory->databases[i]->tables[j]);
-                        db_memory->databases[i]->tables[j]->table_insert_head = 0;
-                        // printf("buffer overflow \n");
+                        
                     }
 
                     pthread_mutex_unlock(&db_memory->databases[i]->database_lock);
@@ -355,7 +390,7 @@ void print_table(string db_name, string table_name) // for debug
     {
         if (db_memory->databases[i]->name == db_name) // db exists
         {
-            //pthread_mutex_lock(&db_memory->databases[i]->database_lock);
+            // pthread_mutex_lock(&db_memory->databases[i]->database_lock);
             for (int j = 0; j < db_memory->databases[i]->tables.size(); j++)
             {
                 if (db_memory->databases[i]->tables[j]->name == table_name) // table exists
@@ -502,6 +537,6 @@ int main()
         }
         fs_insertEntry("test_db", "tab1", time, cvec, ivec, fvec, present);
     }
-    //print_table("test_db", "tab1");
-    // tmpfs_deinit();
+    // print_table("test_db", "tab1");
+    //  tmpfs_deinit();
 }

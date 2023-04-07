@@ -1,7 +1,7 @@
 #pragma once
 #define BLOCK_SIZE 4096
 #define FIELD_BUFFER_SIZE 10000
-#define DIRTY_BUFFER_SIZE 1000
+#define OOO_BUFFER_SIZE 1000
 
 #define INT_SIZE sizeof(int)
 #define FLOAT_SIZE sizeof(float)
@@ -16,25 +16,28 @@ struct table
 
     int table_insert_head;
     int table_insert_head_secondary;
+    int table_insert_head_ooo;
 
     vector<vector<int>> field_present;
     vector<vector<int>> field_secondary_present;
+    vector<vector<int>> field_present_ooo; //Out Of Order buffer
 
     vector<string> char_field_name;
     vector<int> char_field_size;
     vector<char *> char_field_array;
     vector<char *> char_field_secondary_array;
-    vector<char *> char_dirty;
+    vector<char *> char_field_ooo;
 
     vector<string> int_field_name;
     vector<int*> int_field_array;
     vector<int*> int_field_secondary_array;
-    vector<int*> int_dirty;
+    
+    vector<int*> int_field_ooo;
 
     vector<string> float_field_name;
     vector<float*> float_field_array;
     vector<float*> float_field_secondary_array;
-    vector<float*> float_dirty;
+    vector<float*> float_field_ooo;
 
 
     vector<long int> timestamp;
@@ -42,6 +45,8 @@ struct table
 
     vector<long int> timestamp_secondary;
     long int min_time_secondary;
+
+    vector<long int> timestamp_ooo;
 
     string disk_base_path;
     vector<long > disk_file_paths;

@@ -189,7 +189,7 @@ int load_file(table *t, long int min_time, long int max_time)
     bitmap_len = metabuf[5] + metabuf[6] * 256;
     int tot_cols = (int)num_char_cols + (int)num_int_cols + (int)num_float_cols;
     char *bitmap[tot_cols];
-    for (int i = 0; i < tot_cols; i++)
+    for (int i = 0; i < tot_cols; i++)  
     {
         bitmap[i] = (char *)malloc(bitmap_len);
         fread(bitmap[i], bitmap_len, 1, file);
@@ -197,7 +197,7 @@ int load_file(table *t, long int min_time, long int max_time)
 
     uint8_t head = 0;
     int iter = 0;
-    for (int i = 0; i < num_entries; i++)
+    for (int i = 0; i < num_entries; i++)//Inflate bitmap
     {
         vector<int> v;
         t->field_present.push_back(v);
