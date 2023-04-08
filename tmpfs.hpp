@@ -11,6 +11,7 @@ using namespace std;
 struct database;
 struct table
 {
+    int inst; //Set on instantiation, cleared on first insert
     string name;
     struct database *parent;
 
@@ -47,6 +48,7 @@ struct table
 
     vector<long int> timestamp_secondary;
     long int min_time_secondary;
+    long int max_time_secondary;
 
     vector<long int> timestamp_ooo;
 

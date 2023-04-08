@@ -157,6 +157,7 @@ int fs_create_table(string db_name, string table_name, vector<string> field_name
             t->min_time = 0;
             t->min_time_secondary = 0;
             t->step = step;
+            t->inst = 1;
 
             int failure = 0;
             for (int j = 0; j < field_names.size(); j++)
@@ -254,17 +255,18 @@ int fs_insertEntry(string db_name, string table_name, long int timestamp, vector
                 if (db_memory->databases[i]->tables[j]->name == table_name) // table exists
                 {
                     table *tab = db_memory->databases[i]->tables[j];
-                    if (tab->table_insert_head == 0) // First insert after creation/swap
+                    if (tab->inst == 1) // First insert after creation/swap
                     {
                         tab->min_time = timestamp;
                         tab->max_time = timestamp;
+                        tab->inst = 0;
                     }
                     if (timestamp >= tab->min_time) // Data belongs to current interval
                     {
                         if ((timestamp - tab->max_time) != tab->step) // Reserve space in buffer for missing data
                         {
                             vector<int> present(tab->char_field_array.size() + tab->int_field_array.size() + tab->float_field_array.size(), 0);
-                            for (long int time = tab->max_time + 1; time < timestamp; time += tab->step)
+                            for (long int time = tab->max_time + tab->step; time < timestamp; time += tab->step)
                             {
                                 tab->timestamp.push_back(time);
                                 tab->field_present.push_back(present);
@@ -280,10 +282,6 @@ int fs_insertEntry(string db_name, string table_name, long int timestamp, vector
                             }
                         }
 
-                        if (tab->min_time > timestamp)
-                        {
-                            tab->min_time = timestamp;
-                        }
                         if (tab->max_time < timestamp)
                         {
                             tab->max_time = timestamp;
@@ -315,6 +313,31 @@ int fs_insertEntry(string db_name, string table_name, long int timestamp, vector
                             fs_buffer_swap(tab);
                             tab->table_insert_head = 0;
                             // printf("buffer overflow \n");
+                        }
+                    }
+                    else if (timestamp > tab->min_time_secondary && timestamp < tab->max_time_secondary) // Entry belongs to previous period
+                    {
+                        int index = (timestamp - tab->min_time_secondary) / tab->step;
+
+                        for (int i = 0; i < present.size(); i++)
+                        {
+                            tab->field_secondary_present[index][i] = present[i];
+                        }
+                        for (int k = 0; k < char_entries.size(); k++) // Insert entries
+                        {
+                            memcpy(&tab->char_field_array[k][index * tab->char_field_size[k]],
+                                   char_entries[k], tab->char_field_size[k]);
+                        }
+                        for (int k = 0; k < int_entries.size(); k++)
+                        {
+                            tab->int_field_array[k]
+                                                [index] = int_entries[k];
+                        }
+                        for (int k = 0; k < float_entries.size(); k++)
+                        {
+
+                            tab->float_field_array[k]
+                                                  [index] = float_entries[k];
                         }
                     }
                     else
@@ -430,6 +453,10 @@ int fs_buffer_swap(table *t)
     //     fff = 1;
     // }
     // fff++;
+    if (exists)
+    {
+        file_write(t);
+    }
     swap_buffers(&t->char_field_array, &t->char_field_secondary_array);
     swap_buffers(&t->int_field_array, &t->int_field_secondary_array);
     swap_buffers(&t->float_field_array, &t->float_field_secondary_array);
@@ -438,12 +465,12 @@ int fs_buffer_swap(table *t)
     t->table_insert_head_secondary = t->table_insert_head;
     t->timestamp.swap(t->timestamp_secondary);
     t->timestamp.clear();
-    t->min_time_secondary = t->min_time;
 
-    if (exists)
-    {
-        file_write(t);
-    }
+    t->min_time_secondary = t->min_time;
+    t->max_time_secondary = t->max_time;
+
+    t->min_time = t->max_time + t->step;
+    t->max_time = t->max_time;
     fflush(stdout);
     return 0;
 }
@@ -550,7 +577,8 @@ int main()
     type.push_back(2);
     type.push_back(2);
     type.push_back(2);
-    fs_create_table("test_db", "tab1", names, type, size, 1);
+    int step = 10;
+    fs_create_table("test_db", "tab1", names, type, size, step);
 
     for (int i = 0; i < 100000; i++)
     {
@@ -606,8 +634,9 @@ int main()
         {
             // sleep(1);
         }
+        time = (time/step)*step;
         fs_insertEntry("test_db", "tab1", time, cvec, ivec, fvec, present);
     }
-    //print_table("test_db", "tab1");
-    //  tmpfs_deinit();
+    // print_table("test_db", "tab1");
+    //   tmpfs_deinit();
 }
