@@ -71,11 +71,9 @@ struct memory_engine
 struct memory_engine *db_memory;
 
 
-int fs_init();
-int fs_deinit();
-int fs_create_db(string db_name);
-int fs_create_table(string db_name, string table_name, vector<string> field_names, vector<int> field_type, vector<int> field_size, int step);
-int fs_insertEntry(string db_name, string table_name, long int timestamp, vector<char *> char_entries, vector<int> int_entries, vector<float> float_entries, vector<int> present);
-int fs_buffer_swap(table* t);
-
-int write_ooo_buffer(table * t);
+int init();
+int deinit();
+int create_db(string db_name);
+int create_table(string db_name, string table_name, vector<string> field_names, vector<int> field_type, vector<int> field_size, int step);
+int insertEntry(string db_name, string table_name, long int timestamp, vector<char *> char_entries, vector<int> int_entries, vector<float> float_entries, vector<int> present);
+int flush_ooo_buffer(table * t);

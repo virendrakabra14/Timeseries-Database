@@ -18,3 +18,8 @@ struct read_buff
     int min_index;
     int max_index;
 };
+
+// int file_write(table *t);
+// vector<read_buff *> file_read(string db_name, string table_name, long int min_time, long int max_time);
+// int load_file(read_buff *r, string path);
+// vector<read_buff *> file_read(string db_name, string table_name, long int min_time, long int max_time);

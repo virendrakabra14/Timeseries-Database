@@ -16,79 +16,27 @@
 #include "disk.cpp"
 
 #include "tmpfs.hpp"
-// Creates and initialises the tmpfs. RAM based fast filesystem to store data before writing to disk.
-// All tmpfs init errors are fatal, terminate database on error.
-void print_table(string db_name, string table_name);
-int fs_init()
-{
-    // // Check if mountpoint exists
-    // struct stat sb;
-    // int err_ret = 0;
-    // if (stat(TMPFS_MOUNTPOINT.c_str(), &sb) == 0)
-    // {
-    //     printf("WARN : Mountpoint already exists, the database may overwrite the contents.....\n");
-    // }
-    // else
-    // {
-    //     printf("INFO : Creating mount directory......");
-    //     string cmd = "mkdir " + TMPFS_MOUNTPOINT;
-    //     err_ret = system(cmd.c_str());
-    //     if (!err_ret)
-    //         printf("Success\n");
-    //     else
-    //     {
-    //         printf("Failed.....Aborting\n");
-    //         return 1;
-    //     }
-    // }
 
-    // // Create and mount tmpfs, user will be prompted for sudo
-    // string cmd = "sudo mount -t tmpfs -o size=" + TMPFS_SIZE + " tmpfs " + TMPFS_MOUNTPOINT;
-    // printf("INFO : Creating amd mounting tmpfs......");
-    // err_ret = system(cmd.c_str());
-    // if (!err_ret)
-    //     printf("Success\n");
-    // else
-    // {
-    //     printf("Failed.....Aborting\n");
-    //     return 1;
-    // }
+
+void print_table(string db_name, string table_name);
+int buffer_swap(table* t);
+
+int init()
+{
     db_memory = new memory_engine;
     mkdir(BASE_DIR, 0777);
     return 0;
 }
 
 // Unmount and delete contents
-int fs_deinit()
+int deinit() //TODO : free buffers 
 {
-    // printf("WARN : Preparing to delete temporary filesystem.....\n");
-    // int err_ret = 0;
-    // string cmd = "sudo umount " + TMPFS_MOUNTPOINT;
-    // printf("INFO : Unmounting tmpfs........");
-    // err_ret = system(cmd.c_str());
-    // if (!err_ret)
-    //     printf("Success\n");
-    // else
-    // {
-    //     printf("Failed.....Check if the fs is being used by another process/service\n");
-    //     return 1;
-    // }
-    // cmd = "sudo rm -rf " + TMPFS_MOUNTPOINT;
-    // printf("INFO : Deleting tmpfs......");
-    // err_ret = system(cmd.c_str());
-    // if (!err_ret)
-    //     printf("Success\n");
-    // else
-    // {
-    //     printf("Failed.....Check if the mountpoint is being used by another process/service\n");
-    //     return 1;
-    // }
     return 0;
 }
 
 // Adds a new database if it does not exists.
 // Creates the db directory
-int fs_create_db(string db_name)
+int create_db(string db_name)
 {
     pthread_mutex_lock(&(db_memory->db_mem_lock));
     for (int i = 0; i < db_memory->databases.size(); i++)
@@ -130,7 +78,7 @@ int free_pointer_vec(vector<T> vec)
 
 // Creates a new table in the database and creates its directories
 // Field_type : 0 => char[], 1=> int, 2=> float
-int fs_create_table(string db_name, string table_name, vector<string> field_names, vector<int> field_type, vector<int> field_size, int step)
+int create_table(string db_name, string table_name, vector<string> field_names, vector<int> field_type, vector<int> field_size, int step)
 {
     for (int i = 0; i < db_memory->databases.size(); i++)
     {
@@ -242,7 +190,7 @@ int fs_create_table(string db_name, string table_name, vector<string> field_name
     return 1;
 }
 
-int fs_insertEntry(string db_name, string table_name, long int timestamp, vector<char *> char_entries, vector<int> int_entries, vector<float> float_entries, vector<int> present)
+int insertEntry(string db_name, string table_name, long int timestamp, vector<char *> char_entries, vector<int> int_entries, vector<float> float_entries, vector<int> present)
 {
     for (int i = 0; i < db_memory->databases.size(); i++)
     {
@@ -275,7 +223,7 @@ int fs_insertEntry(string db_name, string table_name, long int timestamp, vector
                                 if (tab->table_insert_head >= FIELD_BUFFER_SIZE)
                                 {
                                     // Initiate compression and disk write....
-                                    fs_buffer_swap(tab);
+                                    buffer_swap(tab);
                                     tab->table_insert_head = 0;
                                     // printf("buffer overflow \n");
                                 }
@@ -310,7 +258,7 @@ int fs_insertEntry(string db_name, string table_name, long int timestamp, vector
                         if (tab->table_insert_head >= FIELD_BUFFER_SIZE)
                         {
                             // Initiate compression and disk write....
-                            fs_buffer_swap(tab);
+                            buffer_swap(tab);
                             tab->table_insert_head = 0;
                             // printf("buffer overflow \n");
                         }
@@ -366,7 +314,7 @@ int fs_insertEntry(string db_name, string table_name, long int timestamp, vector
                         if (tab->table_insert_head_ooo >= OOO_BUFFER_SIZE)
                         {
                             // Initiate disk write....
-                            write_ooo_buffer(tab);
+                            flush_ooo_buffer(tab);
 
                             // printf("buffer overflow \n");
                         }
@@ -385,7 +333,7 @@ int fs_insertEntry(string db_name, string table_name, long int timestamp, vector
     return 1;
 }
 
-int write_ooo_buffer(table *t)
+int flush_ooo_buffer(table *t)
 {
     t->table_insert_head_ooo = 0;
     return 0;
@@ -403,7 +351,7 @@ int swap_buffers(vector<T> *vec1, vector<T> *vec2)
     return 0;
 }
 
-int fs_buffer_swap(table *t)
+int buffer_swap(table *t)
 {
     int exists = 1;
     if (t->char_field_secondary_array.size() == 0 && t->int_field_secondary_array.size() == 0 && t->float_field_secondary_array.size() == 0)
@@ -546,8 +494,8 @@ void print_table(string db_name, string table_name) // for debug
 
 int main()
 {
-    fs_init();
-    fs_create_db("test_db");
+    init();
+    create_db("test_db");
     vector<string> names;
     names.push_back("char field");
     names.push_back("char2 field");
@@ -578,7 +526,7 @@ int main()
     type.push_back(2);
     type.push_back(2);
     int step = 10;
-    fs_create_table("test_db", "tab1", names, type, size, step);
+    create_table("test_db", "tab1", names, type, size, step);
 
     for (int i = 0; i < 100000; i++)
     {
@@ -635,8 +583,6 @@ int main()
             // sleep(1);
         }
         time = (time/step)*step;
-        fs_insertEntry("test_db", "tab1", time, cvec, ivec, fvec, present);
+        insertEntry("test_db", "tab1", time, cvec, ivec, fvec, present);
     }
-    // print_table("test_db", "tab1");
-    //   tmpfs_deinit();
 }

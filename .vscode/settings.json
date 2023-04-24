@@ -11,6 +11,7 @@
         "tmpfs.h": "c",
         "iosfwd": "c",
         "chrono": "cpp",
-        "*.tcc": "cpp"
+        "*.tcc": "cpp",
+        "algorithm": "cpp"
     }
 }

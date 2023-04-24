@@ -1,4 +1,4 @@
-#define BASE_DIR "./db/"
+#define BASE_DIR "../db/"
 #include "stdio.h"
 #include "stdint.h"
 #include "disk.h"
@@ -104,15 +104,15 @@ int file_write(table *t)
     if (flag == 0)
     {
         // load_file(tab, min_time, max_time);
-        min_tme = t->min_time_secondary + 10;
+        min_tme = t->min_time_secondary+10;
         flag = 1;
     }
     vector<read_buff *> entries;
     entries = file_read(t->parent->name, t->name, min_tme, t->max_time_secondary);
     int tot = 0;
-    for (int i = 0; i < entries.size(); i++)
+    for(int i = 0;i<entries.size();i++)
     {
-        tot += entries[i]->timestamp.size();
+        tot+=entries[i]->timestamp.size();
     }
     printf("ENTRIES SIZE : %d\n", tot);
     return 0;
@@ -197,10 +197,13 @@ int load_file(read_buff *r, string path)
     fclose(file);
     return 0;
 }
-
+int random_insert()  //TODO: insert in random reserved space on disk for out of order data
+{
+    return 0;
+}
 vector<read_buff *> file_read(string db_name, string table_name, long int min_time, long int max_time)
 {
-    // printf("%ld   tme   %ld", min_time, max_time);
+    //printf("%ld   tme   %ld", min_time, max_time);
     string path = BASE_DIR + db_name + "/" + table_name + "/";
     vector<vector<long int>> timestamps;
     for (const auto &entry : filesystem::directory_iterator(path))
@@ -221,8 +224,8 @@ vector<read_buff *> file_read(string db_name, string table_name, long int min_ti
         if (min_index == -1 && timestamps[i][1] >= min_time && timestamps[i][0] <= min_time)
             min_index = i;
     }
-    if (max_time > timestamps[timestamps.size() - 1][1])
-        max_index = timestamps.size() - 1;
+    if(max_time > timestamps[timestamps.size()-1][1])
+    max_index = timestamps.size()-1;
     vector<read_buff *> entries;
     if (min_index != -1 && max_index != -1)
     {
@@ -241,7 +244,7 @@ vector<read_buff *> file_read(string db_name, string table_name, long int min_ti
             // printf("%s", path.c_str());
             fflush(stdout);
             load_file(r, path);
-            // printf("size : %ld \n", r->timestamp.size());
+            //printf("size : %ld \n", r->timestamp.size());
             entries.push_back(r);
         }
     }
