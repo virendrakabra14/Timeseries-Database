@@ -1,7 +1,7 @@
 #pragma once
 #define BLOCK_SIZE 4096
-#define FIELD_BUFFER_SIZE 10000
-#define OOO_BUFFER_SIZE 1000
+#define FIELD_BUFFER_SIZE 20
+#define OOO_BUFFER_SIZE 5
 
 #define INT_SIZE sizeof(int)
 #define FLOAT_SIZE sizeof(float)
@@ -54,6 +54,8 @@ struct table
 
     string disk_base_path;
     vector<long > disk_file_paths;
+
+    vector<pair<long int, long int>> file_timestamps;
 };
 
 struct database

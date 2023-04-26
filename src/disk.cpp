@@ -115,6 +115,9 @@ int file_write(table *t)
         tot+=entries[i]->timestamp.size();
     }
     printf("ENTRIES SIZE : %d\n", tot);
+
+    t->file_timestamps.push_back({min_time, max_time});
+
     return 0;
 }
 
@@ -197,10 +200,60 @@ int load_file(read_buff *r, string path)
     fclose(file);
     return 0;
 }
-int random_insert()  //TODO: insert in random reserved space on disk for out of order data
+
+int random_insert(string path, long int timestamp, vector<char *> char_entries, vector<int> int_entries, vector<float> float_entries, vector<int> present)
 {
+    // insert in random reserved space on disk for out of order data
+
+    uint16_t num_entries;
+
+    FILE *file = fopen(path.c_str(), "r+");
+
+    uint8_t metabuf[2];
+    fread(metabuf, 2, 1, file);
+    num_entries = metabuf[0] + metabuf[1] * (1<<8);
+
+    size_t num_cols = present.size();
+    size_t metadata_size = 7 + num_entries * num_cols + 1 * char_entries.size();
+    size_t timestamps_size = sizeof(long int) * num_entries;
+
+    // get char col sizes
+    uint8_t char_col_len[char_entries.size()];
+    fseek(file, metadata_size-char_entries.size(), SEEK_SET);
+    fread(char_col_len, char_entries.size(), 1, file);
+
+    // get initial timestamp (in this file)
+    // can do this using path or metadata; using latter here
+    long int init_timestamp;
+    fseek(file, metadata_size, SEEK_SET);
+    fread(&init_timestamp, sizeof(long int), 1, file);
+
+    long int time_diff = timestamp - init_timestamp;
+    unsigned long int col_offset = 0;
+
+    for(int i=0; i<char_entries.size(); i++) {
+        fseek(file, metadata_size + timestamps_size + col_offset + time_diff*char_col_len[i], SEEK_SET);
+        fwrite(char_entries[i], char_col_len[i], 1, file);
+        col_offset += char_col_len[i] * num_entries;
+    }
+
+    for(int i=0; i<int_entries.size(); i++) {
+        fseek(file, metadata_size + timestamps_size + col_offset + time_diff*INT_SIZE, SEEK_SET);
+        fwrite(&int_entries[i], INT_SIZE, 1, file);
+        col_offset += INT_SIZE * num_entries;
+    }
+
+    for(int i=0; i<float_entries.size(); i++) {
+        fseek(file, metadata_size + timestamps_size + col_offset + time_diff*FLOAT_SIZE, SEEK_SET);
+        fwrite(&float_entries[i], FLOAT_SIZE, 1, file);
+        col_offset += FLOAT_SIZE * num_entries;
+    }
+
+    fclose(file);
+
     return 0;
 }
+
 vector<read_buff *> file_read(string db_name, string table_name, long int min_time, long int max_time)
 {
     //printf("%ld   tme   %ld", min_time, max_time);
