@@ -321,6 +321,7 @@ int insertEntry(string db_name, string table_name, long int timestamp, vector<ch
                     }
 
                     pthread_mutex_unlock(&db_memory->databases[i]->database_lock);
+                    printf("here! ");
                     return 0;
                 }
             }
@@ -333,9 +334,42 @@ int insertEntry(string db_name, string table_name, long int timestamp, vector<ch
     return 1;
 }
 
-int flush_ooo_buffer(table *t)
+int flush_ooo_buffer(table *tab)
 {
-    t->table_insert_head_ooo = 0;
+
+    string path;
+    vector<char *> char_entries;
+    vector<int> int_entries;
+    vector<float> float_entries;
+    vector<int> present;
+
+    for(int i=0; i<tab->table_insert_head_ooo; i++)
+    {
+        for(auto&& p: tab->file_timestamps)
+        {
+            // get interval bounds (for file path)
+            if(tab->timestamp_ooo[i] >= p.first && tab->timestamp_ooo[i] <= p.second)
+            {
+                path = BASE_DIR + tab->parent->name + "/" + tab->name + "/" + to_string(p.first) + "-" + to_string(p.second);
+                present = tab->field_present_ooo[i];
+                for(int k = 0; k < tab->char_field_ooo.size(); k++)
+                {
+                    char_entries.push_back(&tab->char_field_ooo[k][i * tab->char_field_size[k]]);
+                }
+                for (int k = 0; k < tab->int_field_ooo.size(); k++)
+                {
+                    tab->int_field_ooo[k][i] = int_entries[k];
+                }
+                for (int k = 0; k < float_entries.size(); k++)
+                {
+                    tab->float_field_ooo[k][i] = float_entries[k];
+                }
+                random_insert(path, tab->timestamp_ooo[i], char_entries, int_entries, float_entries, present);
+            }
+        }
+    }
+
+    tab->table_insert_head_ooo = 0;
     return 0;
 }
 
@@ -528,7 +562,7 @@ int main()
     int step = 10;
     create_table("test_db", "tab1", names, type, size, step);
 
-    for (int i = 0; i < 100000; i++)
+    for (int i = 0; i < 50; i++)
     {
         chrono::milliseconds ms = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch());
         long time = ms.count();
@@ -585,4 +619,5 @@ int main()
         time = (time/step)*step;
         insertEntry("test_db", "tab1", time, cvec, ivec, fvec, present);
     }
+    print_table("test_db", "tab1");
 }

@@ -115,6 +115,9 @@ int file_write(table *t)
         tot+=entries[i]->timestamp.size();
     }
     printf("ENTRIES SIZE : %d\n", tot);
+
+    t->file_timestamps.push_back({min_time, max_time});
+
     return 0;
 }
 
