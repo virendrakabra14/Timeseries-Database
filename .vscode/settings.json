@@ -12,6 +12,7 @@
         "iosfwd": "c",
         "chrono": "cpp",
         "*.tcc": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "filesystem": "cpp"
     }
 }

@@ -1,0 +1,72 @@
+
+ENTRIES SIZE : 20
+
+ENTRIES SIZE : 40
+
+ENTRIES SIZE : 60
+
+Before ooo inserts:
+
+0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 
+lpjmx null null null nkewc null null null myhnr null null null null null null null hfepc null gqvei null 
+null null null null null null null null cloxlivk null null null umijqpgd null vccjhqud null null null qvqhwedm null 
+udkdcyfmup null null null jhfogdsdte null null null aioufqmmhr null trdrjtxwvf null null null bbltrlcoon null jndnajjhsg null uqwejrvnsx null 
+hpnmyhtntkwhiuw null null null null null null null null null null null gqtmdwpmfnkujgi null ojhwlepnpofubcx null qnwrurhqanvpqmk null fxnxmnxtuoqyxiv null 
+149798315 null null null null null null null null null null null 1566288819 null null null 777720504 null null null 
+2038664370 null null null null null null null 1470503465 null null null null null null null 1543755629 null null null 
+null null null null 381991.968750 null null null null null null null 5381521.000000 null 1232157.875000 null 4381832.000000 null 4149198.500000 null 
+null null null null null null null null 1405784.750000 null null null 1848272.625000 null null null null null 4237162.500000 null 
+1050320.875000 null null null null null null null null null 759860.625000 null 4904570.000000 null null null null null 4343655.000000 null 
+20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 
+null null null null null null null null null null fucsg null null null null null null null null null 
+armumcmm null wgtyikon null null null null null null null extcyvir null oprnkuox null oqvfqpuu null null null null null 
+null null null null null null null null null null null null ftjjcujsxv null null null null null null null 
+null null jeqoqoboogaiaxp null null null null null null null cwofqnhxtdamjfl null urpmpmoqasoddet null eiljqcivpcusjjj null null null null null 
+1584710873 null 1655035325 null null null null null null null null null 1813080154 null null null null null null null 
+null null null null null null null null null null null null 1579068977 null null null null null null null 
+2396448.500000 null 5099714.000000 null null null null null null null null null null null 372857.906250 null null null null null 
+null null null null null null null null null null null null null null 4926363.500000 null null null null null 
+5205665.500000 null null null null null null null null null 3550651.250000 null 1710279.625000 null null null null null null null 
+40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 
+null null null null null null null null hoclq null null null null null null null null null null null 
+null null fclvnlvw null null null detxnhge null null null ujrnsljn null null null null null null null null null 
+null null null null null null null null bcdtygtdou null vbrfabsbyh null null null psylnmcdbh null null null null null 
+null null null null ovmyqqytjmipsvn null hqdctvijvdvjxyn null null null eaphjsngqfsatnj null null null baljnppimftbtib null null null null null 
+null null null null 1254749154 null 1521740435 null 815774123 null 1033206202 null null null null null 541110115 null null null 
+null null 698312496 null null null 1947691087 null null null null null null null null null null null null null 
+null null null null 5195956.000000 null 624022.500000 null 1859625.875000 null null null null null 2623937.500000 null 3709619.250000 null null null 
+null null null null null null null null null null 5070903.500000 null null null null null null null null null 
+null null null null 3150076.500000 null 846571.125000 null null null 2510122.750000 null null null null null 1285458.500000 null null null 
+
+After ooo inserts:
+
+0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 
+lpjmx ooooo null ooooo nkewc ooooo null ooooo myhnr ooooo null null null null null null hfepc null gqvei null 
+null oooooooo null oooooooo null oooooooo null oooooooo cloxlivk oooooooo null null umijqpgd null vccjhqud null null null qvqhwedm null 
+udkdcyfmup oooooooooo null oooooooooo jhfogdsdte oooooooooo null oooooooooo aioufqmmhr oooooooooo trdrjtxwvf null null null bbltrlcoon null jndnajjhsg null uqwejrvnsx null 
+hpnmyhtntkwhiuw ooooooooooooooo null ooooooooooooooo null ooooooooooooooo null ooooooooooooooo null ooooooooooooooo null null gqtmdwpmfnkujgi null ojhwlepnpofubcx null qnwrurhqanvpqmk null fxnxmnxtuoqyxiv null 
+149798315 12345 null 12345 null 12345 null 12345 null 12345 null null 1566288819 null null null 777720504 null null null 
+2038664370 123456 null 123456 null 123456 null 123456 1470503465 123456 null null null null null null 1543755629 null null null 
+null 123.449997 null 123.449997 381991.968750 123.449997 null 123.449997 null 123.449997 null null 5381521.000000 null 1232157.875000 null 4381832.000000 null 4149198.500000 null 
+null 123.456001 null 123.456001 null 123.456001 null 123.456001 1405784.750000 123.456001 null null 1848272.625000 null null null null null 4237162.500000 null 
+1050320.875000 -125.062500 null -125.062500 null -125.062500 null -125.062500 null -125.062500 759860.625000 null 4904570.000000 null null null null null 4343655.000000 null 
+20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 
+null null null null null null null null null null fucsg null null null null null null null null null 
+armumcmm null wgtyikon null null null null null null null extcyvir null oprnkuox null oqvfqpuu null null null null null 
+null null null null null null null null null null null null ftjjcujsxv null null null null null null null 
+null null jeqoqoboogaiaxp null null null null null null null cwofqnhxtdamjfl null urpmpmoqasoddet null eiljqcivpcusjjj null null null null null 
+1584710873 null 1655035325 null null null null null null null null null 1813080154 null null null null null null null 
+null null null null null null null null null null null null 1579068977 null null null null null null null 
+2396448.500000 null 5099714.000000 null null null null null null null null null null null 372857.906250 null null null null null 
+null null null null null null null null null null null null null null 4926363.500000 null null null null null 
+5205665.500000 null null null null null null null null null 3550651.250000 null 1710279.625000 null null null null null null null 
+40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 
+null null null null null null null null hoclq null null null null null null null null null null null 
+null null fclvnlvw null null null detxnhge null null null ujrnsljn null null null null null null null null null 
+null null null null null null null null bcdtygtdou null vbrfabsbyh null null null psylnmcdbh null null null null null 
+null null null null ovmyqqytjmipsvn null hqdctvijvdvjxyn null null null eaphjsngqfsatnj null null null baljnppimftbtib null null null null null 
+null null null null 1254749154 null 1521740435 null 815774123 null 1033206202 null null null null null 541110115 null null null 
+null null 698312496 null null null 1947691087 null null null null null null null null null null null null null 
+null null null null 5195956.000000 null 624022.500000 null 1859625.875000 null null null null null 2623937.500000 null 3709619.250000 null null null 
+null null null null null null null null null null 5070903.500000 null null null null null null null null null 
+null null null null 3150076.500000 null 846571.125000 null null null 2510122.750000 null null null null null 1285458.500000 null null null 

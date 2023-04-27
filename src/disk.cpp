@@ -14,7 +14,7 @@ vector<read_buff *> file_read(string db_name, string table_name, long int min_ti
 /**
  * File format
  * Metadata : 2 byte (number of entries) | 1 byte (number of char columns) | 1 byte (number of int  columns) | 1 byte (number of float columns) |
- *            Bitmap length 2 bytes | BITMAPS (tot_num columns* num_entries) | Char column lengths (1 Byte * num of char columns)
+ *            Bitmap length 2 bytes | BITMAPS (tot_num columns * bitmap_len) | Char column lengths (1 Byte * num of char columns)
  *
  * Data :     Timestamps | Char | Int | Float
  */
@@ -124,7 +124,7 @@ int file_write(table *t)
 /**
  * File format
  * Metadata : 2 byte (number of entries) | 1 byte (number of char columns) | 1 byte (number of int  columns) | 1 byte (number of float columns) |
- *            Bitmap length 2 bytes | BITMAPS (tot_num columns* num_entries) | Char column lengths (1 Byte * num of char columns)
+ *            Bitmap length 2 bytes | BITMAPS (tot_num columns * bitmap_len) | Char column lengths (1 Byte * num of char columns)
  *
  * Data :     Timestamps | Char | Int | Float
  */
@@ -205,16 +205,20 @@ int random_insert(string path, long int timestamp, vector<char *> char_entries, 
 {
     // insert in random reserved space on disk for out of order data
 
-    uint16_t num_entries;
+    uint16_t num_entries, bitmap_len;
+    size_t num_cols;
 
     FILE *file = fopen(path.c_str(), "r+");
 
-    uint8_t metabuf[2];
-    fread(metabuf, 2, 1, file);
+    uint8_t metabuf[7];
+    fread(metabuf, 7, 1, file);
     num_entries = metabuf[0] + metabuf[1] * (1<<8);
+    bitmap_len = metabuf[5] + metabuf[6] * (1<<8);
+    num_cols = metabuf[2] + metabuf[3] + metabuf[4];
 
-    size_t num_cols = present.size();
-    size_t metadata_size = 7 + num_entries * num_cols + 1 * char_entries.size();
+    // printf(">>> %hu, %lu, %lu\n", num_entries, num_cols, present.size());
+
+    size_t metadata_size = 7 + bitmap_len * num_cols + 1 * char_entries.size();
     size_t timestamps_size = sizeof(long int) * num_entries;
 
     // get char col sizes
@@ -229,6 +233,28 @@ int random_insert(string path, long int timestamp, vector<char *> char_entries, 
     fread(&init_timestamp, sizeof(long int), 1, file);
 
     long int time_diff = timestamp - init_timestamp;
+
+    // modify bitmap using `present`
+    char *bitmap[num_cols];
+    fseek(file, 7, SEEK_SET);
+    for (int i = 0; i < num_cols; i++)
+    {
+        bitmap[i] = (char *)malloc(bitmap_len);
+        fread(bitmap[i], bitmap_len, 1, file);
+    }
+    for (int j = 0; j < num_cols; j++)
+    {
+        bitmap[j][time_diff/8] |= (present[j] << (time_diff%8));
+    }
+    fseek(file, 7, SEEK_SET);
+    for (int i = 0; i < num_cols; i++)
+    {
+        for (int j = 0; j < bitmap_len; j++)
+        {
+            fwrite(&bitmap[i][j], 1, 1, file);
+        }
+    }
+
     unsigned long int col_offset = 0;
 
     for(int i=0; i<char_entries.size(); i++) {
