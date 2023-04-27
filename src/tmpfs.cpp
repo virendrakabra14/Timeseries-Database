@@ -321,7 +321,6 @@ int insertEntry(string db_name, string table_name, long int timestamp, vector<ch
                     }
 
                     pthread_mutex_unlock(&db_memory->databases[i]->database_lock);
-                    printf("here! ");
                     return 0;
                 }
             }
@@ -337,12 +336,6 @@ int insertEntry(string db_name, string table_name, long int timestamp, vector<ch
 int flush_ooo_buffer(table *tab)
 {
 
-    string path;
-    vector<char *> char_entries;
-    vector<int> int_entries;
-    vector<float> float_entries;
-    vector<int> present;
-
     for(int i=0; i<tab->table_insert_head_ooo; i++)
     {
         for(auto&& p: tab->file_timestamps)
@@ -350,19 +343,26 @@ int flush_ooo_buffer(table *tab)
             // get interval bounds (for file path)
             if(tab->timestamp_ooo[i] >= p.first && tab->timestamp_ooo[i] <= p.second)
             {
+                string path;
+                vector<char *> char_entries;
+                vector<int> int_entries;
+                vector<float> float_entries;
+                vector<int> present;
+                
                 path = BASE_DIR + tab->parent->name + "/" + tab->name + "/" + to_string(p.first) + "-" + to_string(p.second);
                 present = tab->field_present_ooo[i];
                 for(int k = 0; k < tab->char_field_ooo.size(); k++)
                 {
                     char_entries.push_back(&tab->char_field_ooo[k][i * tab->char_field_size[k]]);
+                    // printf("!!! %.*s ", tab->char_field_size[k], char_entries[k]);
                 }
                 for (int k = 0; k < tab->int_field_ooo.size(); k++)
                 {
-                    tab->int_field_ooo[k][i] = int_entries[k];
+                    int_entries.push_back(tab->int_field_ooo[k][i]);
                 }
-                for (int k = 0; k < float_entries.size(); k++)
+                for (int k = 0; k < tab->float_field_ooo.size(); k++)
                 {
-                    tab->float_field_ooo[k][i] = float_entries[k];
+                    float_entries.push_back(tab->float_field_ooo[k][i]);
                 }
                 random_insert(path, tab->timestamp_ooo[i], char_entries, int_entries, float_entries, present);
             }
@@ -526,98 +526,69 @@ void print_table(string db_name, string table_name) // for debug
     printf("not found \n");
 }
 
-int main()
+void print_table(string db_name, string table_name, long int min_time, long int max_time)
 {
-    init();
-    create_db("test_db");
-    vector<string> names;
-    names.push_back("char field");
-    names.push_back("char2 field");
-    names.push_back("char3 field");
-    names.push_back("char4 field");
+    unsigned long int num_entries;
+    size_t col_num;
 
-    names.push_back("integer field");
-    names.push_back("integer2 field");
-
-    names.push_back("float field");
-    names.push_back("float2 field");
-    names.push_back("float3 field");
-    vector<int> size;
-    size.push_back(5);
-    size.push_back(8);
-    size.push_back(10);
-    size.push_back(15);
-    vector<int> type;
-    type.push_back(0);
-    type.push_back(0);
-    type.push_back(0);
-    type.push_back(0);
-
-    type.push_back(1);
-    type.push_back(1);
-
-    type.push_back(2);
-    type.push_back(2);
-    type.push_back(2);
-    int step = 10;
-    create_table("test_db", "tab1", names, type, size, step);
-
-    for (int i = 0; i < 50; i++)
+    vector<read_buff *> r = file_read(db_name, table_name, min_time, max_time);
+    for(read_buff *e: r)
     {
-        chrono::milliseconds ms = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch());
-        long time = ms.count();
-        vector<int> present;
-        // printf("present : ");
-        for (int j = 0; j < 9; j++)
+        num_entries = e->timestamp.size();
+        for(int i = 0; i < num_entries; i++)
         {
-            present.push_back(rand() % 2);
-            //  printf("%d",present[j]);
+            printf("%ld ", e->timestamp[i]);
         }
-        if (rand() % 2 == 0)
+        printf("\n");
+
+        col_num = 0;
+        for(int i = 0; i < e->char_cols.size(); i++)
         {
-            for (int j = 0; j < 9; j++)
+            for(int j = 0; j < num_entries; j++)
             {
-                present[j] = 0;
+                if(e->present[j][col_num] == 1)
+                {
+                    printf("%.*s ", e->char_col_sizes[i], e->char_cols[i] + j*e->char_col_sizes[i]);
+                }
+                else
+                {
+                    printf("null ");
+                }
             }
+            printf("\n");
+            col_num += 1;
         }
-        // printf("\n");
-        char c1[5], c2[8], c3[10], c4[15];
-        for (int j = 0; j < 5; j++)
+        for(int i = 0; i < e->int_cols.size(); i++)
         {
-            c1[j] = 'a' + (int)(((float)rand() / RAND_MAX) * ('z' - 'a'));
+            for(int j = 0; j < num_entries; j++)
+            {
+                if(e->present[j][col_num] == 1)
+                {
+                    printf("%d ", e->int_cols[i][j]);
+                }
+                else
+                {
+                    printf("null ");
+                }
+            }
+            printf("\n");
+            col_num += 1;
         }
-        for (int j = 0; j < 8; j++)
+        for(int i = 0; i < e->float_cols.size(); i++)
         {
-            c2[j] = 'a' + (int)(((float)rand() / RAND_MAX) * ('z' - 'a'));
+            for(int j = 0; j < num_entries; j++)
+            {
+                if(e->present[j][col_num] == 1)
+                {
+                    printf("%f ", e->float_cols[i][j]);
+                }
+                else
+                {
+                    printf("null ");
+                }
+            }
+            printf("\n");
+            col_num += 1;
         }
-        for (int j = 0; j < 10; j++)
-        {
-            c3[j] = 'a' + (int)(((float)rand() / RAND_MAX) * ('z' - 'a'));
-        }
-        for (int j = 0; j < 15; j++)
-        {
-            c4[j] = 'a' + (int)(((float)rand() / RAND_MAX) * ('z' - 'a'));
-        }
-
-        vector<char *> cvec;
-        cvec.push_back(c1);
-        cvec.push_back(c2);
-        cvec.push_back(c3);
-        cvec.push_back(c4);
-
-        vector<int> ivec;
-        ivec.push_back(rand());
-        ivec.push_back(rand());
-        vector<float> fvec;
-        fvec.push_back((float)rand() / 393);
-        fvec.push_back((float)rand() / 393);
-        fvec.push_back((float)rand() / 393);
-        if (i % 10000 == 0)
-        {
-            // sleep(1);
-        }
-        time = (time/step)*step;
-        insertEntry("test_db", "tab1", time, cvec, ivec, fvec, present);
     }
-    print_table("test_db", "tab1");
 }
