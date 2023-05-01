@@ -6,11 +6,10 @@ import write
 """
 Expected syntax:
 CREATE DATABASE <db_name>
-CREATE TABLE <db_name> <table_name> (<col_name> <col_size> <col_type>)*
+CREATE TABLE <db_name> <table_name> (<col_name> <col_size> <col_type>)*   #Without brackets
 INSERT INTO <db_name> <table_name> VALUES <timestamp> <num_char_entries> <char_entries>* <num_int_entries> <int_entries>* <num_float_entries> <float_entries>* 
 UPDATE <db_name> <table_name> SET <timestamp> <num_char_entries> <char_entries>* <num_int_entries> <int_entries>* <num_float_entries> <float_entries>*
 DELETE FROM <db_name> <table_name> <timestamp> <num_char_entries> <num_int_entries> <num_float_entries>
-
 """
 def parse(sql,pipe):
     # parsed = sqlparse.parse(sql)[0]
