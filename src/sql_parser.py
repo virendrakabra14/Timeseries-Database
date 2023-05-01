@@ -79,7 +79,7 @@ def parse(sql,pipe):
                     present.append(1)
             num_int_entries = int(query_type[6+num_char_entries])
             for i in range(7+num_char_entries, 7+num_char_entries+num_int_entries):
-                if int_entries[-1] == "NULL":
+                if query_type[i] == "NULL":
                     present.append(0)
                     int_entries.append(0)
                 else:
@@ -87,7 +87,7 @@ def parse(sql,pipe):
                     present.append(1)
             num_float_entries = int(query_type[7+num_char_entries+num_int_entries])
             for i in range(8+num_char_entries+num_int_entries, 8+num_char_entries+num_int_entries+num_float_entries):
-                if float_entries[-1] == "NULL":
+                if query_type[i] == "NULL":
                     present.append(0)
                     float_entries.append(0)
                 else:
