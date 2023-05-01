@@ -1,6 +1,7 @@
 import socket
 import threading
-
+from sql_parser import parse
+import write
 # create a socket object
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -19,6 +20,7 @@ client_sockets = []
 # list to keep track of client threads
 threads = []
 
+pipe = write.init_pipe()
 def handle_client(client_socket, addr):
     while True:
         # receive the message from the client
@@ -29,9 +31,9 @@ def handle_client(client_socket, addr):
             print("Recieved : ",query)
 
             # Call  Function for Query Processing Here
-
+            response = parse(query,pipe)
             # send a response to the client
-            response = f"Received: {query}"
+            response = f"Received: {query}. Response: {response}"
             client_socket.send(response.encode('ascii'))
         else:
             # close the client socket

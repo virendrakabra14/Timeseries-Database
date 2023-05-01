@@ -19,57 +19,60 @@ def parse(sql,pipe):
     if query_type[0] == 'SELECT':
         print("SELECT")
     elif query_type[0] == 'INSERT':
-        db_name = query_type[2]
-        tab_name = query_type[3]
-        timestamp = query_type[5]
-        char_entries = []
-        int_entries = []
-        float_entries = []
-        present = []
-        num_char_entries = int(query_type[6])
-        for i in range(7,7+num_char_entries):
-            char_entries.append(query_type[i])
-            if char_entries[-1] == "NULL":
-                present.append(0)
-            else:
-                present.append(1)
-        num_int_entries = int(query_type[7+num_char_entries])
-        for i in range(8+num_char_entries,8+num_char_entries+num_int_entries):
-            if int_entries[-1] == "NULL":
-                present.append(0)
-                int_entries.append(0)
-            else:
-                int_entries.append(int(query_type[i]))
-                present.append(1)
+        try:
+            db_name = query_type[2]+"\0"
+            tab_name = query_type[3]+ "\0"
+            timestamp = query_type[5]
+            char_entries = []
+            int_entries = []
+            float_entries = []
+            present = []
+            num_char_entries = int(query_type[6])
+            for i in range(7,7+num_char_entries):
+                char_entries.append(query_type[i]+"\0")
+                if char_entries[-1] == "NULL":
+                    present.append(0)
+                else:
+                    present.append(1)
+            num_int_entries = int(query_type[7+num_char_entries])
+            for i in range(8+num_char_entries,8+num_char_entries+num_int_entries):
+                if int_entries[-1] == "NULL":
+                    present.append(0)
+                    int_entries.append(0)
+                else:
+                    int_entries.append(int(query_type[i]))
+                    present.append(1)
 
-        num_float_entries = int(query_type[8+num_char_entries+num_int_entries])
-        for i in range(9+num_char_entries+num_int_entries,9+num_char_entries+num_int_entries+num_float_entries):
-            if float_entries[-1] == "NULL":
-                present.append(0)
-                float_entries.append(0)
-            else:
-                float_entries.append(float(query_type[i]))
-                present.append(1)
-        
-        output = write.insert(db_name,tab_name,timestamp,char_entries,int_entries,float_entries,present,pipe)
+            num_float_entries = int(query_type[8+num_char_entries+num_int_entries])
+            for i in range(9+num_char_entries+num_int_entries,9+num_char_entries+num_int_entries+num_float_entries):
+                if float_entries[-1] == "NULL":
+                    present.append(0)
+                    float_entries.append(0)
+                else:
+                    float_entries.append(float(query_type[i]))
+                    present.append(1)
+            
+            output = write.insert(db_name,tab_name,timestamp,char_entries,int_entries,float_entries,present,pipe)
+        except:
+            return "Invalid query"
 
         print("INSERT")
     elif query_type[0] == 'UPDATE':
         print("UPDATE")
     elif query_type[0] == 'CREATE':
         if query_type[1] == "TABLE":
-            db_name = query_type[2]
-            tab_name = query_type[3]
+            db_name = query_type[2] + "\0"
+            tab_name = query_type[3] + "\0"
             names = []
             size = []
             col_type = []
             for i in range(4,N,3):
-                names.append(query_type[i])
+                names.append(query_type[i]+"\0")
                 size.append(query_type[i+1])
                 col_type.append(query_type[i+2])
             output = write.create_table(db_name,tab_name,names,size,col_type,10,pipe)       
         elif query_type[1] == "DATABASE":
-            db_name = query_type[2]
+            db_name = query_type[2]+"\0"
             output = write.create_db(db_name,pipe)
 
     elif query_type[0] == 'DELETE':
