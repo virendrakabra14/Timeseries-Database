@@ -1,13 +1,15 @@
-import sqlparse
+# import sqlparse
 import write
 
 # A very minimal parser to tokenise. Need  to modify to specific needs of the pipe interface
 
 """
 Expected syntax:
-create database <db_name>
-create table <db_name> <table_name> (<col_name> <col_size> <col_type>)*
-insert into <db_name> <table_name> values  <timestamp> <num_char_entries> <char_entries>* <num_int_entries> <int_entries>* <num_float_entries> <float_entries>* 
+CREATE DATABASE <db_name>
+CREATE TABLE <db_name> <table_name> (<col_name> <col_size> <col_type>)*
+INSERT INTO <db_name> <table_name> VALUES <timestamp> <num_char_entries> <char_entries>* <num_int_entries> <int_entries>* <num_float_entries> <float_entries>* 
+UPDATE <db_name> <table_name> SET <timestamp> <num_char_entries> <char_entries>* <num_int_entries> <int_entries>* <num_float_entries> <float_entries>*
+DELETE FROM <db_name> <table_name> <timestamp> <num_char_entries> <num_int_entries> <num_float_entries>
 
 """
 def parse(sql,pipe):
@@ -30,7 +32,7 @@ def parse(sql,pipe):
             num_char_entries = int(query_type[6])
             for i in range(7,7+num_char_entries):
                 char_entries.append(query_type[i]+"\0")
-                if char_entries[-1] == "NULL":
+                if char_entries[-1] == "NULL\0":
                     present.append(0)
                 else:
                     present.append(1)
@@ -58,6 +60,45 @@ def parse(sql,pipe):
 
         print("INSERT")
     elif query_type[0] == 'UPDATE':
+        """
+        UPDATE <db_name> <table_name> SET <timestamp> <num_char_entries> <char_entries>* <num_int_entries> <int_entries>* <num_float_entries> <float_entries>*
+        """
+        try:
+            db_name = query_type[1]+"\0"
+            tab_name = query_type[2]+ "\0"
+            timestamp = query_type[4]
+            char_entries = []
+            int_entries = []
+            float_entries = []
+            present = []
+            num_char_entries = int(query_type[5])
+            for i in range(6, 6+num_char_entries):
+                char_entries.append(query_type[i]+"\0")
+                if char_entries[-1] == "NULL\0":
+                    present.append(0)
+                else:
+                    present.append(1)
+            num_int_entries = int(query_type[6+num_char_entries])
+            for i in range(7+num_char_entries, 7+num_char_entries+num_int_entries):
+                if int_entries[-1] == "NULL":
+                    present.append(0)
+                    int_entries.append(0)
+                else:
+                    int_entries.append(int(query_type[i]))
+                    present.append(1)
+            num_float_entries = int(query_type[7+num_char_entries+num_int_entries])
+            for i in range(8+num_char_entries+num_int_entries, 8+num_char_entries+num_int_entries+num_float_entries):
+                if float_entries[-1] == "NULL":
+                    present.append(0)
+                    float_entries.append(0)
+                else:
+                    float_entries.append(float(query_type[i]))
+                    present.append(1)
+            
+            output = write.insert(db_name,tab_name,timestamp,char_entries,int_entries,float_entries,present,pipe)
+        except:
+            return "Invalid query"
+
         print("UPDATE")
     elif query_type[0] == 'CREATE':
         if query_type[1] == "TABLE":
@@ -76,6 +117,24 @@ def parse(sql,pipe):
             output = write.create_db(db_name,pipe)
 
     elif query_type[0] == 'DELETE':
+        """
+        DELETE FROM <db_name> <table_name> <timestamp> <num_char_entries> <num_int_entries> <num_float_entries>
+        """
+        try:
+            db_name = query_type[2]+"\0"
+            tab_name = query_type[3]+ "\0"
+            timestamp = query_type[4]
+            num_char_entries = int(query_type[5])
+            num_int_entries = int(query_type[6])
+            num_float_entries = int(query_type[7])
+            char_entries = ["NULL\0" for i in range(num_char_entries)]
+            int_entries = [0 for i in range(num_int_entries)]
+            float_entries = [0 for i in range(num_float_entries)]
+            present = [0 for i in range(num_char_entries+num_int_entries+num_float_entries)]
+            output = write.insert(db_name,tab_name,timestamp,char_entries,int_entries,float_entries,present,pipe)
+        except:
+            return "Invalid query"
+
         print("DELETE")
 
     # for i in tokens:
