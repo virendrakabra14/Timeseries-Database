@@ -84,7 +84,7 @@ def insert(db_name, table_name,timestamp, char_entries, int_entries, float_entri
     pipe.flush()
 
 
-def query(db_name, table_name, min_time, max_time):
+def query(db_name, table_name, min_time, max_time,pipe="pipe",res_path="resp"):
     length = len(db_name) + len(table_name) + 16 +1
     encoded_data = length.to_bytes(4, byteorder='little', signed=True)
     pipe.write(encoded_data)

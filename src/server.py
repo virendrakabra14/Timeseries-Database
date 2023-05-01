@@ -31,7 +31,7 @@ def handle_client(client_socket, addr):
             print("Recieved : ",query)
 
             # Call  Function for Query Processing Here
-            response = parse(query,pipe)
+            response = str(parse(query,pipe))
             # send a response to the client
             response = f"Received: {query}. Response: {response}"
             client_socket.send(response.encode('ascii'))

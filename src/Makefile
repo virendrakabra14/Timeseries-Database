@@ -19,10 +19,10 @@
 # 	rm -f *.o $(EXE)
 
 all:
-	g++ main.cpp -std=c++17 -o exec
+	g++ main.cpp -std=c++17 -o exec -lpthread
 
 backend_only:
-	g++ main.cpp -std=c++17 -D__ONLYBACKEND__ -o exec
+	g++ main.cpp -std=c++17 -D__ONLYBACKEND__ -o exec -lpthread
 
 clean:
 	rm exec

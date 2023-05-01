@@ -5,6 +5,7 @@ import write
 
 """
 Expected syntax:
+SELECT FROM <db_name> <table_name> <min_time> <max_time>
 CREATE DATABASE <db_name>
 CREATE TABLE <db_name> <table_name> (<col_name> <col_size> <col_type>)*   #Without brackets
 INSERT INTO <db_name> <table_name> VALUES <timestamp> <num_char_entries> <char_entries>* <num_int_entries> <int_entries>* <num_float_entries> <float_entries>* 
@@ -18,7 +19,15 @@ def parse(sql,pipe):
     query_type = sql.split(' ')
     N = len(query_type)
     if query_type[0] == 'SELECT':
-        print("SELECT")
+        try:
+            db_name = query_type[2]+"\0"
+            tab_name = query_type[3]+ "\0"
+            min_time = int(query_type[4])
+            max_time = int(query_type[5])
+            res = write.query(db_name,tab_name,min_time,max_time,pipe)
+            return res
+        except:
+            return "Invalid Query"
     elif query_type[0] == 'INSERT':
         try:
             db_name = query_type[2]+"\0"
