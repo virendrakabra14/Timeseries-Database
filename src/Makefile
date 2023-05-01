@@ -17,3 +17,12 @@
 
 # clean:
 # 	rm -f *.o $(EXE)
+
+all:
+	g++ main.cpp -std=c++17 -o exec
+
+backend_only:
+	g++ main.cpp -std=c++17 -D__ONLYBACKEND__ -o exec
+
+clean:
+	rm exec
