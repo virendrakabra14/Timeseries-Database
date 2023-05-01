@@ -4,11 +4,12 @@
 #include <unistd.h>
 #include <string>
 #include <string.h>
+#include <thread>
 
 #include "tmpfs.cpp"
 #define MAX_BUF 4096
 
-int insert_pipe;
+int insert_pipe,res_pipe;
 uint8_t buf[MAX_BUF];
 
 int init_insert_pipe()
@@ -52,13 +53,13 @@ int service_insert_pipe()
         }
         if (buf[0] == 0) // Create db
         {
-            cout << "db"<< endl;
+            cout << "db" << endl;
             string db_name((char *)&buf[1]);
             create_db(db_name);
         }
         if (buf[0] == 1) // Create table
         {
-            cout << "table"<< endl;
+            cout << "table" << endl;
             string db_name((char *)&buf[1]);
             string table_name((char *)&buf[db_name.length() + 2]);
             int offs = 3 + db_name.length() + table_name.length();
@@ -126,9 +127,62 @@ int service_insert_pipe()
                 present.push_back(buf[offs]);
                 offs += 1;
             }
-            insertEntry(db_name, table_name, timestamp, char_entries, int_entries, float_entries, present);
+            thread T(insertEntry, db_name, table_name, timestamp, char_entries, int_entries, float_entries, present);
+            T.detach();
+            // insertEntry(db_name, table_name, timestamp, char_entries, int_entries, float_entries, present);
         }
-        
+        else if (buf[0] == 3)
+        {
+            string db_name((char *)&buf[1]);
+            string table_name((char *)&buf[db_name.length() + 2]);
+            int offs = 3 + db_name.length() + table_name.length();
+            long int min_time = *(long int *)&buf[offs];
+            long int max_time = *(long int *)&buf[offs + 8];
+            res_buff *r = query_db(db_name, table_name, min_time, max_time);
+
+            /***
+             * Num entries(4 bytes) | timestamps(8 bytes) | num_chars | char_entries | num_ints....
+             */
+            const char *pipeName = "resp";
+            res_pipe = open(pipeName, O_WRONLY);
+            const char *message = "Hello, world!";
+            int num_entries = r->timestamp.size();
+            write(res_pipe, &num_entries, 4);
+            write(res_pipe, &(r->timestamp[0]), 8 * r->timestamp.size());
+            int num_chars = r->char_cols.size();
+            write(res_pipe, &num_chars, 4);
+            for (int p = 0; p < num_chars; p++)
+            {
+                int len = r->char_cols[p][0].length();
+                write(res_pipe, &len, 4);
+                for (int h = 0; h < num_entries; h++)
+                {
+                    string s = r->char_cols[p][h];
+                    write(res_pipe, s.c_str(), len);
+                }
+            }
+
+            int num_ints = r->int_cols.size();
+            write(res_pipe, &num_ints, 4);
+            for (int p = 0; p < num_ints; p++)
+            {
+                for (int h = 0; h < num_entries; h++)
+                {
+                    write(res_pipe, &r->int_cols[p][h], 4);
+                }
+            }
+
+            int num_floats = r->float_cols.size();
+            write(res_pipe, &num_floats, 4);
+            for (int p = 0; p < num_floats; p++)
+            {
+                for (int h = 0; h < num_entries; h++)
+                {
+                    write(res_pipe, &r->float_cols[p][h], 4);
+                }
+            }
+            close(res_pipe);
+        }
     }
     return 0;
 }
@@ -136,13 +190,13 @@ int service_insert_pipe()
 int main()
 {
 
-    #ifndef __ONLYBACKEND__
+#ifndef __ONLYBACKEND__
     init();
     init_insert_pipe();
     service_insert_pipe();
-    #endif
+#endif
 
-    #ifdef __ONLYBACKEND__
+#ifdef __ONLYBACKEND__
     string db_name = "test_db";
     string table_name = "tab1";
 
@@ -183,7 +237,7 @@ int main()
     for (int i = 0; i < 50; i++)
     {
         // chrono::milliseconds ms = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch());
-        long time = 2*i;
+        long time = 2 * i;
         vector<int> present;
         // printf("present : ");
         for (int j = 0; j < 9; j++)
@@ -234,44 +288,42 @@ int main()
         {
             // sleep(1);
         }
-        time = (time/step)*step;
+        time = (time / step) * step;
         insertEntry(db_name, table_name, time, cvec, ivec, fvec, present);
     }
-    
+
     printf("\nBefore ooo inserts:\n");
     print_table(db_name, table_name, 0, 100);
 
-    for(int i = 1; i < 20; i += 2)
+    for (int i = 1; i < 20; i += 2)
     {
         char c1[5], c2[8], c3[10], c4[15];
-        for(int i = 0; i < sizeof(c1); i++)
+        for (int i = 0; i < sizeof(c1); i++)
         {
             c1[i] = 'o';
         }
-        for(int i = 0; i < sizeof(c2); i++)
+        for (int i = 0; i < sizeof(c2); i++)
         {
             c2[i] = 'o';
         }
-        for(int i = 0; i < sizeof(c3); i++)
+        for (int i = 0; i < sizeof(c3); i++)
         {
             c3[i] = 'o';
         }
-        for(int i = 0; i < sizeof(c4); i++)
+        for (int i = 0; i < sizeof(c4); i++)
         {
             c4[i] = 'o';
         }
 
-        insertEntry
-        (
+        insertEntry(
             db_name, table_name, i,
             vector<char *>{c1, c2, c3, c4},
             vector<int>{12345, 123456},
             vector<float>{123.45, 123.456, -125.0625},
-            vector<int>(9, 1)
-        );
+            vector<int>(9, 1));
     }
 
     printf("\nAfter ooo inserts:\n");
     print_table(db_name, table_name, 0, 100);
-    #endif
-}   
+#endif
+}

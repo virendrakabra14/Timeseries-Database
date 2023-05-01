@@ -19,6 +19,14 @@ struct read_buff
     int max_index;
 };
 
+struct res_buff
+{
+    vector<long int> timestamp; 
+    vector< vector<int>> int_cols;
+    vector< vector<float>> float_cols;
+    vector<vector<string>> char_cols;
+};
+
 // int file_write(table *t);
 // vector<read_buff *> file_read(string db_name, string table_name, long int min_time, long int max_time);
 // int load_file(read_buff *r, string path);

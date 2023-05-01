@@ -1,18 +1,18 @@
 #Run in the same directory as compiled main.cpp
-
+#Sample file to perform insertions and queries
 import os
 import struct
+import random
+import string
+pipe_path = 'pipe'
+res_path = 'resp'
 
+if not os.path.exists(pipe_path):
+    os.mkfifo(pipe_path)
 
-def init_pipe(pipe_path = 'pipe'):
+pipe = open(pipe_path, 'wb')
 
-    if not os.path.exists(pipe_path):
-        os.mkfifo(pipe_path)
-    pipe = open(pipe_path, 'wb')
-
-    return pipe
-
-def create_db(db_name,pipe):
+def create_db(db_name):
     length = 1 + len(db_name)
     encoded_data = length.to_bytes(4, byteorder='little', signed=True)
     pipe.write(encoded_data)
@@ -22,7 +22,7 @@ def create_db(db_name,pipe):
     pipe.write(bytes(db_name, 'utf-8'))
     pipe.flush()
 
-def create_table(db_name, table_name, col_names, col_type,col_size,time_step,pipe):
+def create_table(db_name, table_name, col_names, col_type,col_size,time_step):
     length = 1+ len(db_name) + len(table_name) + 2 + len(col_names)*2 + 4
     for i in range(len(col_names)):
         length += len(col_names[i])
@@ -48,7 +48,7 @@ def create_table(db_name, table_name, col_names, col_type,col_size,time_step,pip
     pipe.write(time_step.to_bytes(4, byteorder='little', signed=True))
     pipe.flush()
 
-def insert(db_name, table_name,timestamp, char_entries, int_entries, float_entries, present,pipe):
+def insert(db_name, table_name,timestamp, char_entries, int_entries, float_entries, present):
     length = 1 + len(db_name) + len(table_name) + 8+ 1+ 1+len(int_entries)*5 + 1+len(float_entries)*5
     for i in range(len(char_entries)):
         length += len(char_entries[i]) + 2 +1
@@ -82,7 +82,6 @@ def insert(db_name, table_name,timestamp, char_entries, int_entries, float_entri
     for i in range(len(present)):
         pipe.write(present[i].to_bytes(1, byteorder='little', signed=True))
     pipe.flush()
-
 
 def query(db_name, table_name, min_time, max_time):
     length = len(db_name) + len(table_name) + 16 +1
@@ -133,11 +132,23 @@ def query(db_name, table_name, min_time, max_time):
                 res[j].append(struct.unpack('f', data)[0])
         return res
 
-if __name__ == "__main__":
-    #insert( "pk123\0", "qwert8\0", 8080874, char_entries, int_entries, float_entries, present)
-    create_db("test_db\0")
-    names = ["char field1", "char field2", "int field", "foat field1", "float field2"]
-    size = [5,8,0,0,0] #Only used for char fields, rest can contain any value but need to be filled
-    col_type = [0,0,1,2,2] # 0-> char* field, 1-> int, 2-> float
-    create_table("test_db\0", "tab1\0", names, col_type, size, 10)
-    insert("test_db", "tab_1", timestamp, char_entries, int_entries, float_entries, present)
+        
+
+create_db("test_db\0")
+names = ["char field1\0", "int field\0", "float field1\0", "float field2\0"]
+size = [5,0,4,4] #Only used for char fields, rest can contain any value but need to be filled
+col_type = [0,1,2,2] # 0-> char* field, 1-> int, 2-> float
+create_table("test_db\0", "tab1\0", names, col_type, size, 1)
+timestamp = 0
+for i in range(10000):
+    s  = ''.join(random.choices(string.ascii_uppercase +
+                             string.digits, k=5))
+    present = []
+    # for j in range(size[0]-1):
+    #     s+= str(int(random.random()*('z'-'a')))
+    for j in range(4):
+        present.append(1)#random.randint(0, 1))
+    insert("test_db\0", "tab1\0", timestamp, [s], [random.randint(0, 10000)], [random.random(), random.random()], present)
+    timestamp+=1
+
+query("test_db\0", "tab1\0",0,6000)

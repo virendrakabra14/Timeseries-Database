@@ -331,3 +331,71 @@ vector<read_buff *> file_read(string db_name, string table_name, long int min_ti
     printf("\n");
     return entries;
 }
+
+
+res_buff *query_db(string db_name, string table_name, long int min_time, long int max_time)
+{
+    res_buff *ent = new res_buff();
+    vector<read_buff *> r = file_read(db_name, table_name, min_time, max_time);
+    int len = 0;
+    for (int i = 0; i < r.size(); i++)
+    {
+        len += r[i]->timestamp.size();
+    }
+
+    printf("Length :%d\n", len);
+    for (int i = 0; i < r.size(); i++)
+    {
+        if (i == 0)
+        {
+            for (int j = 0; j < r[i]->char_cols.size(); j++)
+            {
+                vector<string> s;
+                ent->char_cols.push_back(s);
+            }
+            for (int j = 0; j < r[i]->int_cols.size(); j++)
+            {
+                vector<int> s;
+                ent->int_cols.push_back(s);
+            }
+            for (int j = 0; j < r[i]->float_cols.size(); j++)
+            {
+                vector<float> s;
+                ent->float_cols.push_back(s);
+            }
+        }
+        for (int j = 0; j < r[i]->timestamp.size(); j++)
+        {
+            int pres = 0;
+            for (int k = 0; k < r[i]->present[j].size(); k++)
+            {
+                pres += r[i]->present[j][k];
+            }
+            if (pres == 0)
+                continue;
+
+            if (r[i]->timestamp[j] > min_time && r[i]->timestamp[j] <=max_time)
+            {
+                ent->timestamp.push_back(r[i]->timestamp[j]);
+                for (int l = 0; l < r[i]->int_cols.size(); l++)
+                {
+                    ent->int_cols[l].push_back(r[i]->int_cols[l][j]);
+                }
+                for (int l = 0; l < r[i]->float_cols.size(); l++)
+                {
+                    ent->float_cols[l].push_back(r[i]->float_cols[l][j]);
+                }
+                for (int l = 0; l < r[i]->char_cols.size(); l++)
+                {
+                    string s = "";
+                    for (int m = 0; m < r[i]->char_col_sizes[l]; m++)
+                    {
+                        s += r[i]->char_cols[l][j * r[i]->char_col_sizes[l] + m];
+                    }
+                    ent->char_cols[l].push_back(s);
+                }
+            }
+        }
+    }
+    return ent;
+}
