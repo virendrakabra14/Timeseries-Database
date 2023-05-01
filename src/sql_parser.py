@@ -2,6 +2,14 @@ import sqlparse
 import write
 
 # A very minimal parser to tokenise. Need  to modify to specific needs of the pipe interface
+
+"""
+Expected syntax:
+create database <db_name>
+create table <db_name> <table_name> (<col_name> <col_size> <col_type>)*
+insert into <db_name> <table_name> values  <timestamp> <num_char_entries> <char_entries>* <num_int_entries> <int_entries>* <num_float_entries> <float_entries>* 
+
+"""
 def parse(sql,pipe):
     # parsed = sqlparse.parse(sql)[0]
     # tokens = [i for i in parsed.tokens if i.ttype != sqlparse.tokens.Whitespace]
@@ -11,6 +19,40 @@ def parse(sql,pipe):
     if query_type[0] == 'SELECT':
         print("SELECT")
     elif query_type[0] == 'INSERT':
+        db_name = query_type[2]
+        tab_name = query_type[3]
+        timestamp = query_type[5]
+        char_entries = []
+        int_entries = []
+        float_entries = []
+        present = []
+        num_char_entries = int(query_type[6])
+        for i in range(7,7+num_char_entries):
+            char_entries.append(query_type[i])
+            if char_entries[-1] == "NULL":
+                present.append(0)
+            else:
+                present.append(1)
+        num_int_entries = int(query_type[7+num_char_entries])
+        for i in range(8+num_char_entries,8+num_char_entries+num_int_entries):
+            if int_entries[-1] == "NULL":
+                present.append(0)
+                int_entries.append(0)
+            else:
+                int_entries.append(int(query_type[i]))
+                present.append(1)
+
+        num_float_entries = int(query_type[8+num_char_entries+num_int_entries])
+        for i in range(9+num_char_entries+num_int_entries,9+num_char_entries+num_int_entries+num_float_entries):
+            if float_entries[-1] == "NULL":
+                present.append(0)
+                float_entries.append(0)
+            else:
+                float_entries.append(float(query_type[i]))
+                present.append(1)
+        
+        output = write.insert(db_name,tab_name,timestamp,char_entries,int_entries,float_entries,present,pipe)
+
         print("INSERT")
     elif query_type[0] == 'UPDATE':
         print("UPDATE")
