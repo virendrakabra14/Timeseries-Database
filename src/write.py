@@ -2,13 +2,17 @@
 
 import os
 import struct
-pipe_path = 'pipe'
 
-if not os.path.exists(pipe_path):
-    os.mkfifo(pipe_path)
-pipe = open(pipe_path, 'wb')
 
-def create_db(db_name):
+def init_pipe(pipe_path = 'pipe'):
+
+    if not os.path.exists(pipe_path):
+        os.mkfifo(pipe_path)
+    pipe = open(pipe_path, 'wb')
+
+    return pipe
+
+def create_db(db_name,pipe):
     length = 1 + len(db_name)
     encoded_data = length.to_bytes(4, byteorder='little', signed=True)
     pipe.write(encoded_data)
@@ -18,7 +22,7 @@ def create_db(db_name):
     pipe.write(bytes(db_name, 'utf-8'))
     pipe.flush()
 
-def create_table(db_name, table_name, col_names, col_type,col_size,time_step):
+def create_table(db_name, table_name, col_names, col_type,col_size,time_step,pipe):
     length = 1+ len(db_name) + len(table_name) + 2 + len(col_names)*2 + 4
     for i in range(len(col_names)):
         length += len(col_names[i])
@@ -44,7 +48,7 @@ def create_table(db_name, table_name, col_names, col_type,col_size,time_step):
     pipe.write(time_step.to_bytes(4, byteorder='little', signed=True))
     pipe.flush()
 
-def insert(db_name, table_name,timestamp, char_entries, int_entries, float_entries, present):
+def insert(db_name, table_name,timestamp, char_entries, int_entries, float_entries, present,pipe):
     length = 1 + len(db_name) + len(table_name) + 8+ 1+ 1+len(int_entries)*5 + 1+len(float_entries)*5
     for i in range(len(char_entries)):
         length += len(char_entries[i]) + 2 +1
@@ -79,11 +83,11 @@ def insert(db_name, table_name,timestamp, char_entries, int_entries, float_entri
         pipe.write(present[i].to_bytes(1, byteorder='little', signed=True))
     pipe.flush()
 
-
-#insert( "pk123\0", "qwert8\0", 8080874, char_entries, int_entries, float_entries, present)
-create_db("test_db\0")
-names = ["char field1", "char field2", "int field", "foat field1", "float field2"]
-size = [5,8,0,0,0] #Only used for char fields, rest can contain any value but need to be filled
-col_type = [0,0,1,2,2] # 0-> char* field, 1-> int, 2-> float
-create_table("test_db\0", "tab1\0", names, col_type, size, 10)
-insert("test_db", "tab_1", timestamp, char_entries, int_entries, float_entries, present)
+if __name__ == "__main__":
+    #insert( "pk123\0", "qwert8\0", 8080874, char_entries, int_entries, float_entries, present)
+    create_db("test_db\0")
+    names = ["char field1", "char field2", "int field", "foat field1", "float field2"]
+    size = [5,8,0,0,0] #Only used for char fields, rest can contain any value but need to be filled
+    col_type = [0,0,1,2,2] # 0-> char* field, 1-> int, 2-> float
+    create_table("test_db\0", "tab1\0", names, col_type, size, 10)
+    insert("test_db", "tab_1", timestamp, char_entries, int_entries, float_entries, present)
