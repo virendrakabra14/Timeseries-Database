@@ -5,9 +5,9 @@ import write
 
 """
 Expected syntax:
-create database <db_name>
-create table <db_name> <table_name> (<col_name> <col_size> <col_type>)*
-insert into <db_name> <table_name> values  <timestamp> <num_char_entries> <char_entries>* <num_int_entries> <int_entries>* <num_float_entries> <float_entries>* 
+CREATE DATABASE <db_name>
+CREATE TABLE <db_name> <table_name> (<col_name> <col_size> <col_type>)*    #Without brackets
+INSERT INTO <db_name> <table_name> values  <timestamp> <num_char_entries> <char_entries>* <num_int_entries> <int_entries>* <num_float_entries> <float_entries>* 
 
 """
 def parse(sql,pipe):
